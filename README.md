@@ -1,9 +1,9 @@
 # 📘 AirXPay Initialization UI Components
 
 <div align="center">
-  <img src="./assets/images/flixora.png" alt="AirXPay Flixora SDK" width="400"/>
+  <img src="./assets/images/flixora.png" alt="AirXPay Flixora SDK" width="100"/>
   <br/>
-  <img src="./assets/images/airxpay.png" alt="AirXPay" width="200"/>
+  <img src="./assets/images/airxpay.png" alt="AirXPay" width="100"/>
 </div>
 
 ---
