@@ -2,8 +2,6 @@
 
 <div align="center">
   <img src="./assets/images/flixora.png" alt="AirXPay Flixora SDK" width="100"/>
-  <br/>
-  <img src="./assets/images/airxpay.png" alt="AirXPay" width="100"/>
 </div>
 
 ---
@@ -83,6 +81,15 @@ airxpay-initialization-ui/
 │   ├── useAirXPaySafe.ts
 │   └── useIsAirXPayReady.ts
 └── index.ts
+
+---
+
+<div align="center">
+  <img src="./assets/images/airxpay.png" alt="AirXPay" width="100"/>
+</div>
+
+---
+
 🚀 Quick Start
 1️⃣ Wrap with Provider
 tsx
