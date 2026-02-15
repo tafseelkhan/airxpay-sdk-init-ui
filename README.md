@@ -25,6 +25,14 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=open-source-initiative" alt="MIT License" />
 </a>
 
+---
+
+<div align="center">
+  <img src="./assets/images/airxpay.png" alt="AirXPay Flixora SDK" width="120"/>
+</div>
+
+---
+
 ## 🚀 Overview
 
 AirXPay Initialization UI is a production-ready React & React Native component library designed to streamline seller onboarding in multi-tenant SaaS applications. Built with TypeScript and enterprise-grade architecture, it provides a seamless, animated, and validated multi-step flow for collecting seller information.
