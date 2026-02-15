@@ -1,6 +1,6 @@
 {
   "name": "@airxpay/sdk-ui",
-  "version": "1.0.0.x",
+  "version": "1.0.0",
   "description": "AirXPay Initialization UI Components for React & React Native",
   "author": "Tafseel Khan",
   "license": "MIT",
