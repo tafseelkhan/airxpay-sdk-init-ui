@@ -1,18 +1,14 @@
 {
   "compilerOptions": {
-    "jsx": "react-native",
-    "target": "ES2020",
-    "module": "CommonJS",
-    "baseUrl": "./src",
-    "paths": {
-      "*": ["types/*"]
-    },
-    "declaration": true,
+    "target": "ES6",
+    "module": "commonjs",
     "outDir": "dist",
+    "declaration": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

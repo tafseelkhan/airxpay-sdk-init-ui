@@ -1,8 +1,29 @@
 # 📘 AirXPay Initialization UI Components
 
-<div align="center">
-  <img src="./assets/images/flixora.png" alt="AirXPay Flixora SDK" width="100"/>
-</div>
+<a href="#-typescript">
+  <img src="https://img.shields.io/badge/TypeScript-5.0+-blue?style=for-the-badge&logo=typescript" alt="TypeScript" />
+</a>
+<a href="#-react">
+  <img src="https://img.shields.io/badge/React-18.0+-61DAFB?style=for-the-badge&logo=react" alt="React" />
+</a>
+<a href="#-react-native">
+  <img src="https://img.shields.io/badge/React_Native-0.72+-61DAFB?style=for-the-badge&logo=react" alt="React Native" />
+</a>
+<a href="#-expo">
+  <img src="https://img.shields.io/badge/Expo-50+-000020?style=for-the-badge&logo=expo" alt="Expo" />
+</a>
+<a href="#-nextjs">
+  <img src="https://img.shields.io/badge/Next.js-14.0+-000000?style=for-the-badge&logo=next.js" alt="Next.js" />
+</a>
+<a href="#-javascript">
+  <img src="https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript" alt="JavaScript" />
+</a>
+<a href="#-typescript">
+  <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" />
+</a>
+<a href="#-mit-license">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=open-source-initiative" alt="MIT License" />
+</a>
 
 ## 🚀 Overview
 
@@ -23,7 +44,7 @@ AirXPay Initialization UI is a production-ready React & React Native component l
 | 🏦 **Bank Verification** | Country-specific bank details collection |
 | 📊 **Progress Tracking** | Visual progress indicator with step status |
 | 🔧 **Configurable** | Customizable via AirXPayProvider |
-| 📘 **TypeScript** | Fully typed components and hooks |
+| 📘 **TypeScript** | Fully typed components, hooks, and classes |
 | 📱 **Cross-platform** | Works with React Native, Expo, and Web |
 
 ---
@@ -45,11 +66,11 @@ yarn add react-native-paper react-native-country-picker-modal @react-native-comm
 ### Install the Package
 
 ```bash
-# For local development
-npm install --save path/to/airxpay-initialization-ui
+# Install the package from npm
+npm install @airxpay/sdk-ui
 
-# Or from npm (when published)
-npm install airxpay-initialization-ui
+# Install package from yarn
+yarn add @airxpay/sdk-ui
 ```
 
 ### Requirements
@@ -63,30 +84,29 @@ npm install airxpay-initialization-ui
 ## 🏗️ Architecture
 
 ```
-airxpay-initialization-ui/
+@airxpay/sdk-ui/
 ├── components/
 │   ├── steps/
 │   │   ├── BasicDetailsForm.tsx
 │   │   ├── KYCVerification.tsx
 │   │   ├── BankDetails.tsx
 │   │   └── OnboardingComplete.tsx
-│   └── SellerOnboardingSheet.tsx
+│   └── ui/
+│       └── SellerOnboard/
+│           └── SellerOnboarding.tsx
 ├── contexts/
 │   └── AirXPayProvider.tsx
-├── api/
-│   └── seller.ts
 ├── hooks/
-│   ├── useAirXPay.ts
-│   ├── useAirXPaySafe.ts
-│   └── useIsAirXPayReady.ts
-└── index.ts
+│   └── SellerOnboarding.tsx      # useAirXPaySheet
+├── api/
+│   └── seller.ts                  # verifyPublicKey
+├── types/
+│   ├── dev.ts                     # __DEV__
+│   └── type.ts                     # AirXPayConfig
+└── index.ts                        # Main exports
 ```
 
 ---
-
-<div align="center">
-  <img src="./assets/images/airxpay.png" alt="AirXPay Flixora SDK" width="100"/>
-</div>
 
 ## 🚀 Quick Start
 
@@ -95,7 +115,7 @@ airxpay-initialization-ui/
 ```tsx
 // Root.tsx
 import React from 'react';
-import { AirXPayProvider } from 'airxpay-initialization-ui';
+import { AirXPayProvider } from '@airxpay/sdk-ui';
 import App from './App';
 
 export default function Root() {
@@ -105,6 +125,7 @@ export default function Root() {
         baseUrl: 'https://api.airxpay.com',
         publicKey: 'YOUR_PUBLIC_KEY_HERE',
       }}
+      enableLogging={__DEV__} // Optional: enables detailed logs in development
     >
       <App />
     </AirXPayProvider>
@@ -117,11 +138,11 @@ export default function Root() {
 ```tsx
 // SellerOnboardingScreen.tsx
 import React from 'react';
-import { SellerOnboardingSheet } from 'airxpay-initialization-ui';
+import { useAirXPaySheet } from '@airxpay/sdk-ui';
 
 const MySellerOnboarding = () => {
   return (
-    <SellerOnboardingSheet
+    <useAirXPaySheet
       sellerId="seller_12345"
       mode="live"
       isKycCompleted={false}
@@ -148,7 +169,7 @@ export default MySellerOnboarding;
 
 ## 📋 Component API
 
-### SellerOnboardingSheet Props
+### useAirXPaySheet Props
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
@@ -167,35 +188,78 @@ export default MySellerOnboarding;
 
 ### AirXPayProvider Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| config.baseUrl | string | ✅ | API base URL |
-| config.publicKey | string | ✅ | API public key |
-| children | ReactNode | ✅ | Child components |
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| config.baseUrl | string | ✅ | - | API base URL (must be valid URL) |
+| config.publicKey | string | ✅ | - | API public key (min 20 chars) |
+| children | ReactNode | ✅ | - | Child components |
+| enableLogging | boolean | ❌ | \_\_DEV\_\_ | Enable/disable console logs |
 
 ---
 
-## 🎣 Hooks
+## 🎣 Hooks & Utilities
 
 ```tsx
 import { 
-  useAirXPay, 
-  useAirXPaySafe, 
-  useIsAirXPayReady,
-  useAirXPayConfig 
-} from 'airxpay-initialization-ui';
+  useAirXPay,           // Access config (throws if no provider)
+  useAirXPaySafe,       // Safe access (returns null if no provider)
+  useIsAirXPayReady,    // Hook: checks if provider is ready
+  useAirXPayConfig,     // Access specific config value
+  AirXPayConsumer       // Context consumer for advanced use
+} from '@airxpay/sdk-ui';
 
-// Access config (throws if no provider)
+// Example usage
 const { baseUrl, publicKey } = useAirXPay();
-
-// Safe access (returns null if no provider)
 const config = useAirXPaySafe();
-
-// Check if provider is ready
 const isReady = useIsAirXPayReady();
-
-// Access specific config value
 const baseUrl = useAirXPayConfig('baseUrl');
+```
+
+### ⚡ Class-based Initialization
+
+The package also provides a class-based approach for scenarios where you need to initialize the SDK asynchronously:
+
+```tsx
+import { useIsAirXPayReady } from '@airxpay/sdk-ui';
+
+// Initialize with config
+const airxpay = new useIsAirXPayReady({
+  baseUrl: 'https://api.airxpay.com',
+  publicKey: 'your_public_key_here'
+});
+
+// Verify credentials asynchronously
+async function initializeSDK() {
+  try {
+    const result = await airxpay.initialize();
+    console.log('SDK initialized successfully:', result);
+  } catch (error) {
+    console.error('Initialization failed:', error);
+  }
+}
+```
+
+---
+
+## 🔧 Configuration Validation
+
+The `AirXPayProvider` includes built-in validation that throws clear, actionable errors:
+
+```tsx
+// ❌ This will throw a detailed error
+<AirXPayProvider
+  config={{
+    baseUrl: 'not-a-url',
+    publicKey: 'short'
+  }}
+>
+  <App />
+</AirXPayProvider>
+
+// Error message:
+// AirXPayProvider Configuration Error:
+//   • baseUrl must be a valid URL
+//   • publicKey appears to be invalid
 ```
 
 ---
@@ -205,8 +269,7 @@ const baseUrl = useAirXPayConfig('baseUrl');
 ### Styling
 
 ```tsx
-// Override default styles
-<SellerOnboardingSheet
+<useAirXPaySheet
   // ... props
   styles={{
     container: { backgroundColor: '#f5f5f5' },
@@ -215,27 +278,14 @@ const baseUrl = useAirXPayConfig('baseUrl');
 />
 ```
 
-### Icons & Branding
-
-```tsx
-// Custom logo
-<SellerOnboardingSheet
-  // ... props
-  logo={require('./assets/custom-logo.png')}
-/>
-
-// Custom step icons via STEPS array modification
-```
-
 ### Theme Support
 
 ```tsx
-// Using with React Native Paper
 import { Provider as PaperProvider } from 'react-native-paper';
 
 <PaperProvider theme={yourTheme}>
   <AirXPayProvider config={config}>
-    <SellerOnboardingSheet {...props} />
+    <useAirXPaySheet {...props} />
   </AirXPayProvider>
 </PaperProvider>
 ```
@@ -270,61 +320,37 @@ Step 4: Completion
 
 ---
 
-## ⚡ Advanced Usage
-
-### Custom Step Implementation
+## 📝 Exports Reference
 
 ```tsx
-import { useStepContext } from 'airxpay-initialization-ui';
+// Main exports from index.ts
+export { useIsAirXPayReady } from "./sdk/airxpay";           // Class for async init
+export { AirXPayProvider } from "./contexts/AirXPayProvider";
+export { default as useAirXPaySheet } from "./hooks/SellerOnboarding";
+export { __DEV__ } from './types/dev';
 
-const CustomStep = () => {
-  const { stepData, updateStepData, goToNextStep } = useStepContext();
-  
-  const handleSubmit = () => {
-    updateStepData({ customField: 'value' });
-    goToNextStep();
-  };
-  
-  return (
-    // Your custom UI
-  );
-};
-```
-
-### Error Handling
-
-```tsx
-<SellerOnboardingSheet
-  onError={(error, step) => {
-    switch(error.code) {
-      case 'KYC_FAILED':
-        showNotification('KYC verification failed');
-        break;
-      case 'BANK_INVALID':
-        showNotification('Invalid bank details');
-        break;
-    }
-  }}
-/>
+// Also available via context
+export { 
+  useAirXPay,
+  useAirXPaySafe,
+  useAirXPayConfig,
+  AirXPayConsumer 
+} from './contexts/AirXPayProvider';
 ```
 
 ---
 
-## 🧪 Testing
+## 🧪 Development Utilities
 
-```bash
-# Run tests
-npm test
+```tsx
+import { __DEV__ } from '@airxpay/sdk-ui';
 
-# Run with coverage
-npm test -- --coverage
-
-# Lint code
-npm run lint
-
-# Type check
-npm run type-check
+if (__DEV__) {
+  console.log('Running in development mode');
+}
 ```
+
+The `__DEV__` flag helps you conditionally run code only in development environments.
 
 ---
 
@@ -333,7 +359,7 @@ npm run type-check
 - **Memoized Components:** All step components are memoized
 - **Optimized Re-renders:** Context splitting prevents unnecessary renders
 - **Lazy Loading:** Steps load on-demand
-- **Animation Optimizations:** Native driver for smooth 60fps transitions
+- **Development Logging:** Auto-disabled in production via `__DEV__`
 
 ---
 
@@ -351,22 +377,22 @@ npm run type-check
 
 | Issue | Solution |
 |-------|----------|
-| Provider not found | Wrap components in `<AirXPayProvider>` |
+| "useAirXPay must be used within AirXPayProvider" | Wrap your component tree with provider |
+| "Public key appears to be invalid" | Check if publicKey is at least 20 chars |
+| "baseUrl must be a valid URL" | Include protocol (https://) in baseUrl |
 | Images not uploading | Check Expo ImagePicker permissions |
-| Animation lag | Enable useNativeDriver in config |
 | TypeScript errors | Update to latest version |
-| Bank validation fails | Check country code format |
 
 ---
 
 ## 📝 Changelog
 
 ### v1.0.5 (Latest)
-- Added React 18 support
-- Fixed animation performance issues
+- Added class-based `useIsAirXPayReady` for async initialization
+- Enhanced error messages with stack traces
+- Added `__DEV__` flag for environment detection
 - Improved TypeScript types
-- Added Expo SDK 50+ compatibility
-- Enhanced error handling
+- Added `enableLogging` prop to provider
 
 ### v1.0.3
 - Initial release
