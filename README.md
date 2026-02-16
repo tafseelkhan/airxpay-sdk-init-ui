@@ -397,6 +397,7 @@ The `__DEV__` flag helps you conditionally run code only in development environm
 
 The **@airxpay/sdk-ui** package provides several utility hooks for accessing configuration, managing initialization state, **and safely interacting with the AirXPayProvider.**
 
+```
 import { 
   useAirXPay, 
   useAirXPaySafe, 
@@ -406,7 +407,7 @@ import {
 
 1️⃣ useAirXPay()
 const { baseUrl, publicKey } = useAirXPay();
-
+```
 
 Provides direct access to the full AirXPay configuration.
 
@@ -430,9 +431,10 @@ Advanced integrations
 
 Recommended for: Production components where the provider is always present.
 
+```
 2️⃣ useAirXPaySafe()
 const safeConfig = useAirXPaySafe();
-
+```
 
 A safe alternative to useAirXPay().
 
@@ -452,9 +454,10 @@ Shared UI components that may or may not be wrapped in the provider
 
 Recommended for: Flexible usage scenarios where provider presence is not guaranteed.
 
+```
 3️⃣ useProviderReady()
 const isReady = useProviderReady();
-
+```
 
 Checks whether the SDK has been fully initialized.
 
@@ -474,9 +477,10 @@ Delaying onboarding UI until SDK is ready
 
 Recommended for: Applications using async initialization or class-based setup.
 
+```
 4️⃣ useAirXPayConfig(key)
 const apiUrl = useAirXPayConfig('baseUrl');
-
+```
 
 Retrieves a specific configuration value from the provider.
 
@@ -502,6 +506,7 @@ useAirXPay	✅ Yes	❌ No	Direct access to full configuration
 useAirXPaySafe	❌ No	✅ Yes	Optional/safe configuration access
 useProviderReady	❌ No	✅ Yes	Initialization state check
 useAirXPayConfig	❌ No	✅ Yes	Access a single configuration value
+
 
 ---
 
