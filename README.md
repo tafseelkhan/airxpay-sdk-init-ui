@@ -409,9 +409,9 @@ import {
 const { baseUrl, publicKey } = useAirXPay();
 ```
 
-Provides direct access to the full AirXPay configuration.
+**Provides direct access to the full AirXPay configuration.**
 
-Behavior
+**Behavior**
 
 Must be used inside AirXPayProvider.
 
@@ -427,16 +427,16 @@ API requests
 
 Dynamic endpoint handling
 
-Advanced integrations
+**Advanced integrations**
 
-Recommended for: Production components where the provider is always present.
+# Recommended for: Production components where the provider is always present.
 
 ```
 2️⃣ useAirXPaySafe()
 const safeConfig = useAirXPaySafe();
 ```
 
-A safe alternative to useAirXPay().
+A safe alternative to ```useAirXPay().```
 
 Behavior
 
@@ -486,7 +486,7 @@ Retrieves a specific configuration value from the provider.
 
 Behavior
 
-Accepts a configuration key (e.g., 'baseUrl', 'publicKey').
+Accepts a configuration key ```(e.g., 'baseUrl', 'publicKey').```
 
 Returns only the requested value.
 
@@ -500,12 +500,15 @@ Cleaner and more focused component logic
 
 Recommended for: Minimal, targeted configuration access.
 
-📌 Hook Comparison
-Hook	Throws Error	Safe Fallback	Primary Purpose
+```📌 Hook Comparison```
+**Hook	Throws Error	Safe Fallback	Primary Purpose**
+
+```
 useAirXPay	✅ Yes	❌ No	Direct access to full configuration
 useAirXPaySafe	❌ No	✅ Yes	Optional/safe configuration access
 useProviderReady	❌ No	✅ Yes	Initialization state check
 useAirXPayConfig	❌ No	✅ Yes	Access a single configuration value
+```
 
 
 ---
