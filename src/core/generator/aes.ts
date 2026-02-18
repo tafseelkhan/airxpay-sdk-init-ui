@@ -1,8 +1,8 @@
 // src/core/crypto/aes.ts
 
-import { S_BOX, INV_S_BOX, RCON } from './constants';
+import { S_BOX, INV_S_BOX, RCON } from '../crypto/constants';
 import { random } from '../rule/random';
-import { EncryptedData } from './types';
+import { EncryptedData } from '../crypto/types';
 
 /**
  * 🔐 AES-256-GCM Implementation
