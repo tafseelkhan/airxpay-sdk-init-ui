@@ -6,7 +6,7 @@ import { PayloadValidator } from '../schema/validators';
 import { ErrorHandler } from '../error/errorHandler';
 import { API_ENDPOINTS } from '../etc/constants';
 
-const BACKEND_URL = 'http://your-backend-server.com'; // Replace with your backend URL
+const BACKEND_URL = 'http://172.20.10.12:7000'; // Replace with your backend URL
 
 // Initialize SDK with public key
 export const initializeInternalApi = (publicKey: string): void => {

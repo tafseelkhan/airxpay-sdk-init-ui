@@ -6,9 +6,6 @@ import {
   refreshMerchantTokenInternal
 } from '../api/merchantProxy';
 import { CreateMerchantPayload, MerchantCreateResponse, MerchantStatusResponse } from '../types/merchantTypes';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const PUBLIC_KEY_STORAGE = '@airxpay_public_key';
 
 class AirXPayService {
   private initialized = false;
@@ -23,7 +20,6 @@ class AirXPayService {
       }
       
       initializeInternalApi(publicKey);
-      await AsyncStorage.setItem(PUBLIC_KEY_STORAGE, publicKey);
       this.initialized = true;
       
       console.log('✅ AirXPay SDK initialized successfully');
