@@ -1,5 +1,3 @@
-// src/error/errorHandler.ts
-
 export interface AppError {
   message: string;
   code?: string;

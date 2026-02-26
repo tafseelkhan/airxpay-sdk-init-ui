@@ -1,143 +1,72 @@
-// src/hooks/useAirXPay.ts
-
 import { useState, useCallback } from 'react';
 import { useAirXPaySafe } from '../contexts/AirXPayProvider';
-import { createMerchantInternal, getMerchantStatusInternal } from '../api/merchantProxy';
-import { tokenManager } from '../utils/token/tokenManager';
-import { CreateMerchantPayload, MerchantCreateResponse, MerchantStatusResponse } from '../types';
+import { tokenService } from '../utils/token/tokenService';
+import { sdkEvents } from '../events/sdkEvents';
 import { ErrorHandler, AppError } from '../error/errorHandler';
 
 interface UseAirXPayReturn {
-  // States
   loading: boolean;
   error: AppError | null;
-  merchantData: MerchantCreateResponse | null;
-  merchantStatus: MerchantStatusResponse | null;
-  token: string | null;
-  
-  // Actions
-  createMerchant: (payload: CreateMerchantPayload) => Promise<MerchantCreateResponse | null>;
-  getMerchantStatus: () => Promise<MerchantStatusResponse | null>;
-  refreshToken: () => Promise<string | null>;
+  hasToken: boolean;
+  submitToBackend: (data: any, backendApi: (data: any) => Promise<any>) => Promise<any>;
+  // REMOVED: refreshToken
   logout: () => Promise<void>;
   clearError: () => void;
 }
 
 export const useAirXPay = (): UseAirXPayReturn => {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
-  const [merchantData, setMerchantData] = useState<MerchantCreateResponse | null>(null);
-  const [merchantStatus, setMerchantStatus] = useState<MerchantStatusResponse | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-
   const context = useAirXPaySafe();
 
-  /**
-   * ✅ CREATE MERCHANT - Main API for onboarding
-   */
-  const createMerchant = useCallback(async (
-    payload: CreateMerchantPayload
-  ): Promise<MerchantCreateResponse | null> => {
+  const submitToBackend = useCallback(async (
+    data: any,
+    backendApi: (data: any) => Promise<any>
+  ): Promise<any> => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('[useAirXPay] 📝 Creating merchant...');
-      
-      const response = await createMerchantInternal(payload);
-      
-      // Token is automatically stored by createMerchantInternal
-      const storedToken = await tokenManager.getToken();
-      setToken(storedToken);
-      
-      setMerchantData(response);
-      
-      console.log('[useAirXPay] ✅ Merchant created:', response.merchant.merchantId);
+      // REMOVED: Token check - SDK must not block flow if token is missing
+      sdkEvents.emitEvent('onboarding:submitting');
+
+      // Call developer's backend API
+      const response = await backendApi(data);
+
+      sdkEvents.emitEvent('onboarding:success', response);
       return response;
-    } catch (err) {
+    } catch (err: any) {
       const appError = ErrorHandler.handle(err);
       setError(appError);
-      console.error('[useAirXPay] ❌ Create failed:', appError);
-      return null;
+      sdkEvents.emitEvent('onboarding:error', appError);
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /**
-   * ✅ GET MERCHANT STATUS - Check onboarding status
-   */
-  const getMerchantStatus = useCallback(async (): Promise<MerchantStatusResponse | null> => {
-    setLoading(true);
-    setError(null);
+  // REMOVED: refreshToken function
 
-    try {
-      console.log('[useAirXPay] 🔍 Fetching merchant status...');
-      
-      const status = await getMerchantStatusInternal();
-      setMerchantStatus(status);
-      
-      console.log('[useAirXPay] ✅ Status fetched:', status.status);
-      return status;
-    } catch (err) {
-      const appError = ErrorHandler.handle(err);
-      setError(appError);
-      console.error('[useAirXPay] ❌ Status fetch failed:', appError);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * 🔄 REFRESH TOKEN - Manual refresh if needed
-   */
-  const refreshToken = useCallback(async (): Promise<string | null> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('[useAirXPay] 🔄 Refreshing token...');
-      
-      const newToken = await tokenManager.refreshToken();
-      setToken(newToken);
-      
-      console.log('[useAirXPay] ✅ Token refreshed');
-      return newToken;
-    } catch (err) {
-      const appError = ErrorHandler.handle(err);
-      setError(appError);
-      console.error('[useAirXPay] ❌ Token refresh failed:', appError);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * 🚪 LOGOUT - Clear all data
-   */
   const logout = useCallback(async (): Promise<void> => {
     try {
-      await tokenManager.clearToken();
-      setToken(null);
-      setMerchantData(null);
-      setMerchantStatus(null);
+      // Clear token from secure storage
+      await tokenService.clearToken();
       
-      // Also call context logout if available
-      if (context?.logout) {
-        await context.logout();
+      // Clear any local state
+      setError(null);
+      setLoading(false);
+      
+      // Emit logout event
+      sdkEvents.emitEvent('token:cleared');
+      
+      if (__DEV__) {
+        console.log('[useAirXPay] User logged out successfully');
       }
-      
-      console.log('[useAirXPay] ✅ Logged out');
     } catch (err) {
-      console.error('[useAirXPay] ❌ Logout failed:', err);
+      // Silent fail
     }
-  }, [context]);
+  }, []);
 
-  /**
-   * ❌ Clear error state
-   */
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -145,13 +74,10 @@ export const useAirXPay = (): UseAirXPayReturn => {
   return {
     loading,
     error,
-    merchantData,
-    merchantStatus,
-    token,
-    createMerchant,
-    getMerchantStatus,
-    refreshToken,
+    hasToken: context?.hasToken || false,
+    submitToBackend,
+    // REMOVED: refreshToken
     logout,
-    clearError,
+    clearError
   };
 };

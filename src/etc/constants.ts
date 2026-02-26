@@ -1,5 +1,3 @@
-// src/etc/constants.ts
-
 export const API_ENDPOINTS = {
   CREATE_MERCHANT: '/api/merchant/create',
   GET_MERCHANT_STATUS: '/api/merchant/status',
@@ -13,7 +11,8 @@ export const ERROR_MESSAGES = {
   FETCH_STATUS_FAILED: 'Failed to fetch merchant status',
   TOKEN_REFRESH_FAILED: 'Failed to refresh authentication token',
   INVALID_PUBLIC_KEY: 'Invalid public key provided',
-  NETWORK_ERROR: 'Network connection failed. Please check your internet.'
+  NETWORK_ERROR: 'Network connection failed. Please check your internet.',
+  TOKEN_MISSING: 'Session expired. Please refill the form.'
 } as const;
 
 export const UI_TEXTS = {

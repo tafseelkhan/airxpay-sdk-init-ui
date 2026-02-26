@@ -1,12 +1,9 @@
-// src/components/onboarding/FinalStepScreen.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
@@ -17,16 +14,17 @@ import {
   IconButton
 } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAirXPay } from '../../../hooks/useAirXPay'; // ✅ CHANGED: useMerchantOnboarding -> useAirXPay
-import { CreateMerchantPayload } from '../../../types';
+import { useAirXPay } from '../../../hooks/useAirXPay';
+import { useMerchantOnboarding } from '../../../hooks/useMerchantOnboarding';
+import { CreateMerchantPayload } from '../../../types/merchantTypes';
 import { UI_TEXTS } from '../../../etc/constants';
+// REMOVED: tokenService import - not needed for validation
 
 interface FinalStepScreenProps {
   publicKey: string;
   onSuccess: (response: any) => void;
   onError?: (error: any) => void;
   initialData?: Partial<CreateMerchantPayload>;
-  // ✅ Developer ka backend API call karne ke liye
   onSubmitToBackend?: (data: any) => Promise<any>;
 }
 
@@ -37,8 +35,9 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   initialData = {},
   onSubmitToBackend
 }) => {
-  // ✅ CHANGED: useAirXPay hook use kiya (jo sirf createMerchant expose karta hai)
-  const { loading, error, createMerchant, clearError } = useAirXPay();
+  // Use both hooks
+  const { loading: airXPayLoading, error: airXPayError, submitToBackend, clearError: clearAirXPayError } = useAirXPay();
+  const { loading: merchantLoading, error: merchantError, createMerchant, clearError: clearMerchantError } = useMerchantOnboarding();
   
   const [formData] = useState<CreateMerchantPayload>({
     merchantName: initialData.merchantName || '',
@@ -54,36 +53,48 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<'form' | 'backend' | 'airxpay'>('form');
+  const [step, setStep] = useState<'form' | 'backend' | 'merchant'>('form');
   const [backendResponse, setBackendResponse] = useState<any>(null);
 
-  // Handle errors
+  // Handle errors from both hooks
   useEffect(() => {
-    if (error) {
-      Alert.alert('Error', error.userMessage);
-      onError?.(error);
-      clearError();
+    if (airXPayError) {
+      // REMOVED: Alert - just call onError
+      onError?.(airXPayError);
+      clearAirXPayError();
     }
-  }, [error]);
+  }, [airXPayError, onError, clearAirXPayError]);
+
+  useEffect(() => {
+    if (merchantError) {
+      // REMOVED: Alert - just call onError
+      onError?.(merchantError);
+      clearMerchantError();
+    }
+  }, [merchantError, onError, clearMerchantError]);
 
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
       
-      // 📤 STEP 1: Developer ka backend API call
+      // REMOVED: Token check - SDK must NOT block flow if token is missing
+
+      let backendResult = null;
+      
+      // 📤 STEP 1: Developer ka backend API call (if provided)
       if (onSubmitToBackend) {
         setStep('backend');
         console.log('📤 Calling developer backend API...');
         
-        const backendResult = await onSubmitToBackend(formData);
+        backendResult = await submitToBackend(formData, onSubmitToBackend);
         setBackendResponse(backendResult);
         
         console.log('✅ Backend API response received:', backendResult);
       }
 
-      // 🚀 STEP 2: SDK ki createMerchant call (useAirXPay se)
-      setStep('airxpay');
-      console.log('🚀 Calling AirXPay createMerchant...');
+      // 🚀 STEP 2: Create merchant in AirXPay
+      setStep('merchant');
+      console.log('🚀 Creating merchant in AirXPay...');
       
       const merchantResponse = await createMerchant(formData);
       
@@ -91,7 +102,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
       
       // 🎉 STEP 3: Success callback with both responses
       onSuccess({
-        backend: backendResponse,
+        backend: backendResult,
         merchant: merchantResponse
       });
 
@@ -117,6 +128,8 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
 
     return allFilled;
   };
+
+  const isLoading = isSubmitting || airXPayLoading || merchantLoading;
 
   return (
     <KeyboardAvoidingView
@@ -245,21 +258,21 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!isFormValid() || isSubmitting) && styles.submitButtonDisabled
+                (!isFormValid() || isLoading) && styles.submitButtonDisabled
               ]}
               onPress={handleSubmit}
-              disabled={!isFormValid() || isSubmitting}
+              disabled={!isFormValid() || isLoading}
             >
               <LinearGradient
-                colors={isFormValid() && !isSubmitting ? ['#0066CC', '#0099FF'] : ['#9CA3AF', '#9CA3AF']}
+                colors={isFormValid() && !isLoading ? ['#0066CC', '#0099FF'] : ['#9CA3AF', '#9CA3AF']}
                 style={styles.submitGradient}
               >
-                {isSubmitting ? (
+                {isLoading ? (
                   <View style={styles.loadingContent}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                     <Text style={styles.submitButtonText}>
                       {step === 'backend' ? 'Calling Backend...' : 
-                       step === 'airxpay' ? 'Creating Account...' : 
+                       step === 'merchant' ? 'Creating Account...' : 
                        UI_TEXTS.FINAL_STEP.PROCESSING}
                     </Text>
                   </View>
@@ -277,6 +290,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   );
 };
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,

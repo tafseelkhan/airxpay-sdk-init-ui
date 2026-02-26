@@ -1,22 +1,21 @@
-// src/config/ConfigManager.ts
-
 import { Logger } from '../utils/log/logger';
 
-export interface BackendConfig {
-  secretKey: string;
+export interface SDKConfig {
   publicKey: string;
-  environment: 'test' | 'live';
+  enableLogging?: boolean;
+  tokenRefreshEndpoint?: string;
+  apiBaseUrl?: string;
 }
 
 export class ConfigManager {
   private static instance: ConfigManager;
-  private backendConfig: BackendConfig | null = null;
+  private config: SDKConfig | null = null;
   private logger: Logger;
 
   private constructor() {
     this.logger = new Logger({
       enabled: true,
-      prefix: '[AirXPay Config]'
+      prefix: '[AirXPay SDK]'
     });
   }
 
@@ -27,44 +26,54 @@ export class ConfigManager {
     return ConfigManager.instance;
   }
 
-  setBackendConfig(config: BackendConfig) {
-    // Log only first 8 chars of keys for security
-    this.logger.debug('Setting backend config:', {
-      secretKey: config.secretKey ? config.secretKey.substring(0, 8) + '...' : undefined,
-      publicKey: config.publicKey ? config.publicKey.substring(0, 8) + '...' : undefined,
-      environment: config.environment
-    });
-    
-    this.backendConfig = config;
-  }
-
-  getBackendConfig(): BackendConfig | null {
-    return this.backendConfig;
-  }
-
-  getSecretKey(): string {
-    if (!this.backendConfig?.secretKey) {
-      throw new Error('AirXPay not initialized. Call createAirXPay() first.');
+  initialize(config: SDKConfig): void {
+    if (!config.publicKey?.trim()) {
+      throw new Error('Public key is required');
     }
-    return this.backendConfig.secretKey;
+
+    this.config = {
+      enableLogging: __DEV__,
+      ...config
+    };
+
+    this.logger.setEnabled(this.config.enableLogging || false);
+    
+    this.log('🚀 AirXPay SDK initialized:');
+    this.log('  📌 Public key:', config.publicKey.substring(0, 8) + '...');
   }
 
   getPublicKey(): string {
-    if (!this.backendConfig?.publicKey) {
-      throw new Error('AirXPay not initialized. Call createAirXPay() first.');
+    if (!this.config?.publicKey) {
+      throw new Error('SDK not initialized. Call initialize() first.');
     }
-    return this.backendConfig.publicKey;
+    return this.config.publicKey;
   }
 
-  getEnvironment(): 'test' | 'live' {
-    return this.backendConfig?.environment || 'test';
+  getTokenRefreshEndpoint(): string | undefined {
+    return this.config?.tokenRefreshEndpoint;
   }
 
-  log(...args: any[]) {
-    this.logger.info(...args);
+  getApiBaseUrl(): string {
+    return this.config?.apiBaseUrl || 'http://172.20.10.12:7000';
   }
 
-  error(...args: any[]) {
-    this.logger.error(...args);
+  isLoggingEnabled(): boolean {
+    return this.config?.enableLogging || false;
+  }
+
+  log(...args: any[]): void {
+    if (this.isLoggingEnabled()) {
+      this.logger.info(...args);
+    }
+  }
+
+  error(...args: any[]): void {
+    if (this.isLoggingEnabled()) {
+      this.logger.error(...args);
+    }
+  }
+
+  isInitialized(): boolean {
+    return !!this.config?.publicKey;
   }
 }

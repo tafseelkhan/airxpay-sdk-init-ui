@@ -1,5 +1,3 @@
-// src/components/steps/onboarding/MerchantOnboarding.tsx
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
@@ -21,31 +19,30 @@ import {
   IconButton,
   Avatar,
 } from 'react-native-paper';
-
 import { LinearGradient } from 'expo-linear-gradient';
+
 import StepIndicator from '../../common/StepIndicator';
-import BasicDetailsForm from '../../steps/BasicDetailsForm';
-import KYCVerification from '../../steps/KYCVerification';
-import BankDetails from '../../steps/BankDetails';
-import { FinalStepScreen } from '../onboarding/FinalStepScreen';
+import BasicDetailsForm from '../BasicDetailsForm';
+import KYCVerification from '../KYCVerification';
+import BankDetails from '../BankDetails';
+import { FinalStepScreen } from './FinalStepScreen';
 import { OnboardingCompleteScreen } from '../OnboardingComplete';
 import { Merchant, MerchantOnboardingProps, StepConfig, FormErrors, StepCompletion } from '../../../types/merchantTypes';
 import { useAirXPaySafe } from '../../../contexts/AirXPayProvider';
-import { verifyPublicKey } from '../../../api/merchantProxy';
+import { useMerchantOnboarding } from '../../../hooks/useMerchantOnboarding';
+import { verifyPublicKey } from '../../../api/clients/verifyPublicKey';
+import { tokenService } from '../../../utils/token/tokenService';
 
 const { width } = Dimensions.get('window');
 
-// Extend StepConfig to include icon
 interface ExtendedStepConfig extends StepConfig {
   icon?: string;
 }
 
-// Extend MerchantOnboardingProps to include onSubmitToBackend
 interface ExtendedMerchantOnboardingProps extends MerchantOnboardingProps {
-  onSubmitToBackend?: (data: any) => Promise<any>; // ✅ Add this prop
+  onSubmitToBackend?: (data: any) => Promise<any>;
 }
 
-// ✅ 5 STEPS - Added Final Step
 const STEPS: ExtendedStepConfig[] = [
   { id: 1, name: 'Basic Details', key: 'basic', isRequired: true, icon: 'account' },
   { id: 2, name: 'KYC Verification', key: 'kyc', isRequired: true, icon: 'shield-account' },
@@ -54,7 +51,6 @@ const STEPS: ExtendedStepConfig[] = [
   { id: 5, name: 'Complete', key: 'complete', isRequired: false, icon: 'check-circle' },
 ];
 
-// Default logo - can be overridden via props
 const DEFAULT_LOGO = require('../../../assets/images/airxpay.png');
 
 const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
@@ -69,24 +65,21 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
   onNext,
   onBack,
   onComplete,
-  onSubmitToBackend, // ✅ Add this prop
+  onSubmitToBackend,
   loading: externalLoading = false,
 }) => {
-  // Get configuration from provider
   const airXPay = useAirXPaySafe();
+  const { loading: merchantLoading, error: merchantError, createMerchant, clearError } = useMerchantOnboarding();
   
-  // Local state for provider verification
   const [isVerifying, setIsVerifying] = useState(true);
   const [isValidProvider, setIsValidProvider] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(initialStep / STEPS.length)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // State management
   const [currentStep, setCurrentStep] = useState<number>(initialStep);
   const [merchantData, setMerchantData] = useState<Partial<Merchant>>({
     mode,
@@ -99,13 +92,8 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [showError, setShowError] = useState<boolean>(false);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isWaitingForBackend, setIsWaitingForBackend] = useState<boolean>(false);
-  
-  // ✅ New state for merchant creation response
   const [merchantResponse, setMerchantResponse] = useState<any>(null);
 
-  // Track completion status of each step dynamically
   const [stepCompletion, setStepCompletion] = useState<StepCompletion>(() => {
     const basicCompleted = !!(
       initialData.merchantName && 
@@ -118,18 +106,22 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       basic: basicCompleted,
       kyc: isKycCompleted || false,
       bank: isBankDetailsCompleted || false,
-      final: false, // ✅ Final step initially incomplete
+      final: false,
     };
   });
 
-  // Verify public key on mount
+  // Handle merchant errors
+  useEffect(() => {
+    if (merchantError) {
+      Alert.alert('Error', merchantError.userMessage);
+      clearError();
+    }
+  }, [merchantError]);
+
   useEffect(() => {
     const verifyProviderConfig = async () => {
-      console.log('🔍 Starting AirXPay provider verification...');
-      
       if (!airXPay) {
-        console.error('❌ AirXPayProvider is undefined - context not found');
-        setVerificationError('AirXPay provider not found in component tree. Please wrap your app with <AirXPayProvider>.');
+        setVerificationError('AirXPay provider not found');
         setIsValidProvider(false);
         setIsVerifying(false);
         return;
@@ -138,27 +130,19 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       const { publicKey } = airXPay;
       
       if (!publicKey) {
-        console.error('❌ AirXPay config missing:', { publicKey: !!publicKey });
-        setVerificationError('AirXPay configuration incomplete. publicKey is required.');
+        setVerificationError('Public key is required');
         setIsValidProvider(false);
         setIsVerifying(false);
         return;
       }
 
-      console.log('✅ AirXPay config found:', { publicKey: publicKey.substring(0, 8) + '...' });
-
       try {
         setIsVerifying(true);
-        console.log('🔑 Verifying public key:', publicKey.substring(0, 8) + '...');
-        
         await verifyPublicKey(publicKey);
-        
-        console.log('✅ Public key verified successfully');
         setIsValidProvider(true);
         setVerificationError(null);
       } catch (err: any) {
-        console.error('❌ Public key verification failed:', err.message);
-        setVerificationError(err.message || 'Invalid AirXPay public key. Please check your configuration.');
+        setVerificationError(err.message || 'Invalid public key');
         setIsValidProvider(false);
       } finally {
         setIsVerifying(false);
@@ -168,18 +152,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
     verifyProviderConfig();
   }, [airXPay]);
 
-  // Log config status after verification
-  useEffect(() => {
-    if (!isVerifying) {
-      if (isValidProvider) {
-        console.log('🚀 AirXPay provider ready - rendering onboarding');
-      } else {
-        console.warn('⚠️ AirXPay provider invalid - showing error state');
-      }
-    }
-  }, [isVerifying, isValidProvider]);
-
-  // Update progress bar animation when step changes
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: currentStep / STEPS.length,
@@ -190,10 +162,8 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
 
   const animateStepTransition = (direction: 'next' | 'back') => {
     if (isAnimating) return;
-
     setIsAnimating(true);
 
-    // Fade out and slide
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -206,10 +176,7 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Reset slide position
       slideAnim.setValue(direction === 'next' ? 50 : -50);
-      
-      // Fade in and slide to center
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -231,7 +198,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
     const updatedData = { ...merchantData, ...stepData };
     setMerchantData(updatedData);
     
-    // Update step completion status dynamically
     if (currentStep === 1) {
       const basicCompleted = !!(
         updatedData.merchantName && 
@@ -247,21 +213,15 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       const bankCompleted = stepData.isBankDetailsCompleted === true;
       setStepCompletion(prev => ({ ...prev, bank: bankCompleted }));
     } else if (currentStep === 4) {
-      // Final step - just mark as completed
       setStepCompletion(prev => ({ ...prev, final: true }));
     }
     
-    // Call onNext callback with step data and current step
     onNext(stepData, currentStep);
 
-    // Move to next step if not last step
     if (currentStep < STEPS.length) {
       animateStepTransition('next');
       setTimeout(() => {
-        setCurrentStep(prev => {
-          const newStep = prev + 1;
-          return newStep;
-        });
+        setCurrentStep(prev => prev + 1);
       }, 150);
     }
   };
@@ -272,7 +232,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       setTimeout(() => {
         setCurrentStep(prev => {
           const newStep = prev - 1;
-          // Pass the new step to parent
           onBack(newStep);
           return newStep;
         });
@@ -281,21 +240,16 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
   };
 
   const validateStepData = useCallback((): boolean => {
-    // Validate required fields dynamically based on STEPS config
-    const requiredSteps = STEPS.filter(step => step.isRequired && step.id < 5); // Exclude complete step
+    const requiredSteps = STEPS.filter(step => step.isRequired && step.id < 5);
     const missingSteps = requiredSteps.filter(step => !stepCompletion[step.key as keyof StepCompletion]);
     
     if (missingSteps.length > 0) {
-      const missingStepNames = missingSteps.map(s => s.name).join(', ');
-      
-      // If missing basic details, show inline error
       if (missingSteps.some(s => s.key === 'basic')) {
         setErrors({ merchantName: 'Please complete all required fields' });
         setShowError(true);
         return false;
       }
       
-      // For KYC or Bank, show alert with navigation
       if (missingSteps.some(s => s.key === 'kyc')) {
         Alert.alert(
           'KYC Pending',
@@ -350,37 +304,30 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
         return false;
       }
       
-      setErrors({ general: `Please complete: ${missingStepNames}` });
-      setShowError(true);
       return false;
     }
 
     return true;
   }, [stepCompletion]);
 
-  // ✅ Handle final step success - merchant created
-  const handleFinalStepSuccess = (response: any) => {
+  const handleFinalStepSuccess = async (response: any) => {
     setMerchantResponse(response);
     setStepCompletion(prev => ({ ...prev, final: true }));
     
-    // Move to complete screen after short delay
     setTimeout(() => {
-      setCurrentStep(5); // Move to complete screen
+      setCurrentStep(5);
     }, 500);
   };
 
-  // ✅ Handle final step error
   const handleFinalStepError = (error: any) => {
     Alert.alert('Error', error.userMessage || 'Failed to create merchant');
   };
 
   const handleComplete = useCallback(() => {
-    // Validate all required data before completing
     if (!validateStepData()) {
       return;
     }
 
-    // Prepare complete merchant data
     const completeMerchantData: Merchant = {
       merchantId: merchantData.merchantId || merchantData._id || merchantResponse?.merchant?.merchantId || '',
       merchantName: merchantData.merchantName || '',
@@ -404,7 +351,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    // Call onComplete with merchant data
     onComplete(completeMerchantData);
   }, [merchantData, mode, status, kycStatus, stepCompletion, merchantResponse, onComplete, validateStepData]);
 
@@ -420,16 +366,11 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
           <LinearGradient
             colors={['#0066CC', '#0099FF']}
             style={styles.verificationCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
           >
             <ActivityIndicator size="large" color="#FFFFFF" />
           </LinearGradient>
           <Text style={styles.verificationText}>
             Verifying AirXPay configuration...
-          </Text>
-          <Text style={styles.verificationSubtext}>
-            Please wait while we validate your public key
           </Text>
         </View>
       );
@@ -439,18 +380,13 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       return (
         <View style={styles.verificationContainer}>
           <View style={[styles.verificationCircle, { backgroundColor: '#FF4444' }]}>
-            <IconButton
-              icon="alert"
-              size={40}
-              iconColor="#FFFFFF"
-              style={{ margin: 0 }}
-            />
+            <IconButton icon="alert" size={40} iconColor="#FFFFFF" />
           </View>
           <Text style={[styles.verificationText, { color: '#FF4444' }]}>
             Invalid AirXPay Configuration
           </Text>
           <Text style={styles.errorMessage}>
-            {verificationError || 'Invalid AirXPay public key. Please check your configuration.'}
+            {verificationError || 'Invalid public key'}
           </Text>
         </View>
       );
@@ -460,24 +396,19 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
   };
 
   const renderStep = () => {
-    // Combine external loading and submitting states to prevent double loader
-    const isLoading = externalLoading || isSubmitting;
+    const isLoading = externalLoading || merchantLoading || isSubmitting;
 
     if (isLoading) {
       return (
         <View style={styles.loadingContainer}>
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <LinearGradient
-              colors={['#0066CC', '#0099FF']}
-              style={styles.loadingCircle}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <ActivityIndicator size="large" color="#FFFFFF" />
-            </LinearGradient>
-          </Animated.View>
+          <LinearGradient
+            colors={['#0066CC', '#0099FF']}
+            style={styles.loadingCircle}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </LinearGradient>
           <Text style={styles.loadingText}>
-            {isSubmitting ? 'Processing...' : 'Loading your information...'}
+            {isSubmitting ? 'Creating your account...' : 'Loading your information...'}
           </Text>
         </View>
       );
@@ -519,7 +450,7 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
               publicKey={airXPay?.publicKey || ''}
               onSuccess={handleFinalStepSuccess}
               onError={handleFinalStepError}
-              onSubmitToBackend={onSubmitToBackend} // ✅ Pass the prop
+              onSubmitToBackend={onSubmitToBackend}
               initialData={{
                 merchantName: merchantData.merchantName,
                 merchantEmail: merchantData.merchantEmail,
@@ -536,9 +467,10 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
         case 5:
           return (
             <OnboardingCompleteScreen
+              developerData={merchantResponse}
               onContinue={handleComplete}
               onLogout={() => console.log('Logout')}
-              autoFetch={true}
+              autoFetch={false}
             />
           );
         default:
@@ -561,13 +493,11 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
     );
   };
 
-  // Progress bar width interpolation
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0%', '100%'],
   });
 
-  // Check if we should show verification UI
   if (isVerifying || !isValidProvider) {
     return (
       <SafeAreaView style={styles.container}>
@@ -575,8 +505,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
         <LinearGradient
           colors={['#F8F9FA', '#FFFFFF']}
           style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
         >
           {renderProviderVerification()}
         </LinearGradient>
@@ -584,7 +512,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
     );
   }
 
-  // Normal onboarding UI when provider is valid
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
@@ -592,8 +519,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
       <LinearGradient
         colors={['#F8F9FA', '#FFFFFF']}
         style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -608,46 +533,29 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
                     style={styles.backButton}
                     disabled={isAnimating}
                   >
-                    <IconButton
-                      icon="arrow-left"
-                      size={24}
-                      iconColor="#0066CC"
-                    />
+                    <IconButton icon="arrow-left" size={24} iconColor="#0066CC" />
                   </TouchableOpacity>
                 )}
                 <View>
-                  <Text style={styles.headerTitle}>
-                    {getStepTitle()}
-                  </Text>
+                  <Text style={styles.headerTitle}>{getStepTitle()}</Text>
                   <Text style={styles.headerSubtitle}>
                     Step {currentStep} of {STEPS.length}
                   </Text>
                 </View>
               </View>
               
-              {/* Logo Section - Fixed alignment */}
               <View style={styles.logoContainer}>
-                <Avatar.Image 
-                  size={32} 
-                  source={DEFAULT_LOGO}
-                />
+                <Avatar.Image size={32} source={DEFAULT_LOGO} />
               </View>
             </View>
 
-            {/* Progress Bar */}
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
-                <Animated.View 
-                  style={[
-                    styles.progressFill,
-                    { width: progressWidth }
-                  ]} 
-                />
+                <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
               </View>
             </View>
           </Surface>
 
-          {/* Step Indicator */}
           <View style={styles.stepIndicatorContainer}>
             <StepIndicator
               currentStep={currentStep}
@@ -658,14 +566,10 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
             />
           </View>
 
-          {/* Current Step Content */}
           <Surface style={styles.contentSurface}>
-            <View style={styles.content}>
-              {renderStep()}
-            </View>
+            <View style={styles.content}>{renderStep()}</View>
           </Surface>
 
-          {/* Error Snackbar */}
           <Snackbar
             visible={showError}
             onDismiss={() => setShowError(false)}
@@ -676,7 +580,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
               textColor: '#FFFFFF',
             }}
             style={styles.snackbar}
-            theme={{ colors: { accent: '#FFFFFF' } }}
           >
             {Object.values(errors)[0] || 'An error occurred'}
           </Snackbar>
@@ -702,10 +605,6 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
   },
   header: {
     flexDirection: 'row',
@@ -728,13 +627,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#1A1A1A',
-    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 13,
     color: '#666666',
     marginTop: 2,
-    fontWeight: '400',
   },
   logoContainer: {
     width: 40,
@@ -744,10 +641,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   progressContainer: {
     paddingHorizontal: 20,
@@ -775,10 +668,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
     overflow: 'hidden',
   },
   content: {
@@ -831,11 +720,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 8,
-    textAlign: 'center',
-  },
-  verificationSubtext: {
-    fontSize: 14,
-    color: '#666666',
     textAlign: 'center',
   },
   errorMessage: {

@@ -1,6 +1,6 @@
 {
-  "name": "@flixora/airxpay-sdk-init-ui",
-  "version": "1.0.12",
+  "name": "@flixora/airxpay-react-native",
+  "version": "0.0.3",
   "description": "AirXPay Initialization UI Components for React & React Native",
   "author": "Tafseel Khan",
   "license": "MIT",

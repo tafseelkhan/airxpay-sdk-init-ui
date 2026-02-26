@@ -1,148 +1,108 @@
-// src/contexts/AirXPayProvider.tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { verifyPublicKey } from '../api/clients/verifyPublicKey';
+import { tokenService } from '../utils/token/tokenService';
+import { Logger } from '../utils/log/logger';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AirXPayConfig, MerchantCreateResponse } from '../types';
-import { tokenManager } from '../utils/token/tokenManager';
-import { initializeInternalApi, verifyPublicKey } from '../api/merchantProxy';
-
-interface AirXPayContextType extends AirXPayConfig {
+interface AirXPayContextType {
+  publicKey: string;
   isValid: boolean;
   loading: boolean;
-  merchantData?: MerchantCreateResponse;
   hasToken: boolean;
+  error?: string;
   merchantId?: string;
   mode: 'test' | 'live';
-  setHasToken: (value: boolean) => void;
-  logout: () => Promise<void>;
 }
 
 const AirXPayContext = createContext<AirXPayContextType | null>(null);
 
 interface Props {
-  config: AirXPayConfig;
+  publicKey: string;
   children: React.ReactNode;
   enableLogging?: boolean;
 }
 
+const logger = new Logger({ prefix: '[AirXPay Provider]' });
+
 export const AirXPayProvider: React.FC<Props> = ({ 
-  config, 
-  children, 
+  publicKey, 
+  children,
   enableLogging = __DEV__ 
 }) => {
   const [state, setState] = useState<AirXPayContextType>({
-    ...config,
+    publicKey,
     isValid: false,
     loading: true,
     hasToken: false,
-    mode: 'test',
-    setHasToken: () => {},
-    logout: async () => {},
+    mode: 'test'
   });
 
-  const [hasToken, setHasToken] = useState(false);
-  const [merchantId, setMerchantId] = useState<string>();
-  const [mode, setMode] = useState<'test' | 'live'>('test');
-
-  const logout = useCallback(async () => {
-    await tokenManager.clearToken();
-    setHasToken(false);
-    setMerchantId(undefined);
-    if (enableLogging) console.log('[AirXPay] User logged out');
-  }, [enableLogging]);
-
   useEffect(() => {
+    logger.setEnabled(enableLogging);
+
     const initialize = async () => {
-      if (!config.publicKey?.trim()) {
-        setState(prev => ({ ...prev, isValid: false, loading: false }));
+      if (!publicKey?.trim()) {
+        setState(prev => ({ 
+          ...prev, 
+          isValid: false, 
+          loading: false,
+          error: 'Public key is required'
+        }));
         return;
       }
 
       try {
-        // Initialize internal API
-        initializeInternalApi(config.publicKey);
-
+        logger.info('Initializing AirXPay...');
+        
+        // Verify public key
+        const verification = await verifyPublicKey(publicKey);
+        
         // Check for existing token
-        const token = await tokenManager.getToken();
-        const validToken = !!token;
-
-        setHasToken(validToken);
+        const hasToken = await tokenService.hasToken();
         
         // Extract merchantId from token if available
-        let id: string | undefined;
-        if (validToken && token) {
-          try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(atob(base64));
-            id = payload.merchantId || payload.sub;
-          } catch {
-            // Ignore decode errors
+        let merchantId: string | undefined;
+        if (hasToken) {
+          const token = await tokenService.getToken();
+          if (token) {
+            try {
+              const base64Url = token.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const payload = JSON.parse(atob(base64));
+              merchantId = payload.merchantId || payload.sub;
+            } catch {
+              // Ignore decode errors
+            }
           }
-        }
-        
-        setMerchantId(id);
-
-        // Verify public key with developer backend
-        const verification = await verifyPublicKey(config.publicKey);
-        
-        const verifiedMode = verification.merchantData?.mode || 'test';
-        setMode(verifiedMode);
-
-        if (enableLogging) {
-          console.log('[AirXPay] Verification response:', {
-            valid: verification.valid,
-            mode: verifiedMode,
-          });
         }
 
         setState({
-          ...config,
+          publicKey,
           isValid: verification.valid,
           loading: false,
-          mode: verifiedMode,
-          merchantData: verification.merchantData,
-          hasToken: validToken,
-          merchantId: id,
-          setHasToken,
-          logout,
+          hasToken,
+          merchantId,
+          mode: verification.merchantData?.mode || 'test'
         });
 
-        if (enableLogging) {
-          console.log('[AirXPay] Initialized successfully', { 
-            hasToken: validToken,
-            mode: verifiedMode 
-          });
-        }
-
-      } catch (err: any) {
-        console.error('[AirXPay] Init failed:', err);
-        
-        setState({ 
-          ...config, 
-          isValid: false, 
-          loading: false, 
-          hasToken: false, 
-          mode: 'test',
-          setHasToken, 
-          logout,
+        logger.info('AirXPay initialized successfully');
+      } catch (error) {
+        logger.error('Initialization failed:', error);
+        setState({
+          publicKey,
+          isValid: false,
+          loading: false,
+          hasToken: false,
+          error: 'Invalid public key',
+          mode: 'test'
         });
       }
     };
-    
+
     initialize();
-  }, [config.publicKey, enableLogging, logout]);
+  }, [publicKey, enableLogging]);
 
   return (
-    <AirXPayContext.Provider 
-      value={{ 
-        ...state, 
-        hasToken, 
-        merchantId, 
-        mode,
-        setHasToken, 
-        logout 
-      }}
-    >
+    <AirXPayContext.Provider value={state}>
       {children}
     </AirXPayContext.Provider>
   );
@@ -151,7 +111,7 @@ export const AirXPayProvider: React.FC<Props> = ({
 export const useAirXPay = (): AirXPayContextType => {
   const context = useContext(AirXPayContext);
   if (!context) {
-    throw new Error('useAirXPay must be used inside <AirXPayProvider>');
+    throw new Error('useAirXPay must be used within AirXPayProvider');
   }
   return context;
 };
@@ -162,9 +122,4 @@ export const useAirXPaySafe = (): AirXPayContextType | null => {
   } catch {
     return null;
   }
-};
-
-export const useProviderReady = (): boolean => {
-  const airXPay = useAirXPaySafe();
-  return !!airXPay && airXPay.isValid && !airXPay.loading;
 };

@@ -1,5 +1,3 @@
-// src/types/merchantTypes.ts
-
 export type BusinessType = "individual" | "company";
 export type Mode = "test" | "live";
 export type MerchantStatus = "active" | "suspended" | "blocked" | "pending";
@@ -77,13 +75,13 @@ export interface MerchantOnboardingProps {
   initialStep?: number;
   isKycCompleted: boolean;
   isBankDetailsCompleted: boolean;
-onSubmitToBackend?: (data: any) => Promise<any>; // ✅ Add this line
   kycStatus: KycStatus;
   status: MerchantStatus;
   initialData?: Partial<Merchant>;
   onNext: (stepData: Partial<Merchant>, step: number) => void;
   onBack: (currentStep: number) => void;
   onComplete: (merchantData: Merchant) => void;
+  onSubmitToBackend?: (data: any) => Promise<any>;
   loading?: boolean;
 }
 
@@ -107,9 +105,6 @@ export interface StepCompletion {
 
 export interface AirXPayConfig {
   publicKey: string;
-  secretKey?: string;
-  clientKey?: string;
-  customNavigation?: { buttonText: string; screenName: string };
 }
 
 export interface MerchantStatusResponse {
@@ -123,34 +118,4 @@ export interface MerchantStatusResponse {
   mode: 'test' | 'live';
   createdAt: string;
   updatedAt: string;
-}
-
-export interface FlixoraConfig {
-  publicKey: string;
-  secretKey?: string;
-  clientKey?: string;
-  environment?: 'test' | 'live';           // 👈 YEH ADD KARO
-  autoRefreshToken?: boolean;               // 👈 YEH ADD KARO
-  tokenRefreshThreshold?: number;            // 👈 YEH ADD KARO
-  enableLogging?: boolean;                   // 👈 YEH ADD KARO
-  customNavigation?: { buttonText: string; screenName: string };
-}
-
-// Global declaration
-declare global {
-  namespace NodeJS {
-    interface Process {
-      flixora?: Record<string, {           // 👈 ANY NAME ALLOWED
-        publicKey?: string;
-        secretKey?: string;
-        clientKey?: string;
-      }>;
-    }
-  }
-}
-
-// Browser compatibility
-if (typeof window !== 'undefined') {
-  (window as any).process = (window as any).process || {};
-  (window as any).process.flixora = (window as any).process.flixora || {};
 }
