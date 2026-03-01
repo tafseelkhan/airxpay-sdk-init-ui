@@ -111,7 +111,6 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
       onError?.(err);
     } finally {
       setIsSubmitting(false);
-      setStep('form');
     }
   };
 

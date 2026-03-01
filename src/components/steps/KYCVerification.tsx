@@ -260,7 +260,6 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({
       setUploadingFor(null);
       
       if (mode === 'test') {
-        Alert.alert('Test Mode', 'Document would be auto-approved in test mode');
       }
     }, 1000);
   };
