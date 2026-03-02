@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
+  Platform,
+} from "react-native";
 import {
   Text,
   ActivityIndicator,
   Surface,
-  IconButton
-} from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAirXPay } from '../../../hooks/useAirXPay';
-import { useMerchantOnboarding } from '../../../hooks/useMerchantOnboarding';
-import { CreateMerchantPayload } from '../../../types/merchantTypes';
-import { UI_TEXTS } from '../../../etc/constants';
+  IconButton,
+} from "react-native-paper";
+import { LinearGradient } from "expo-linear-gradient";
+import { useAirXPay } from "../../../hooks/useAirXPay";
+import { useMerchantOnboarding } from "../../../hooks/useMerchantOnboarding";
+import { CreateMerchantPayload } from "../../../types/merchantTypes";
+import { UI_TEXTS } from "../../../etc/constants";
 // REMOVED: tokenService import - not needed for validation
 
 interface FinalStepScreenProps {
@@ -33,27 +33,37 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   onSuccess,
   onError,
   initialData = {},
-  onSubmitToBackend
+  onSubmitToBackend,
 }) => {
   // Use both hooks
-  const { loading: airXPayLoading, error: airXPayError, submitToBackend, clearError: clearAirXPayError } = useAirXPay();
-  const { loading: merchantLoading, error: merchantError, createMerchant, clearError: clearMerchantError } = useMerchantOnboarding();
-  
+  const {
+    loading: airXPayLoading,
+    error: airXPayError,
+    submitToBackend,
+    clearError: clearAirXPayError,
+  } = useAirXPay();
+  const {
+    loading: merchantLoading,
+    error: merchantError,
+    createMerchant,
+    clearError: clearMerchantError,
+  } = useMerchantOnboarding();
+
   const [formData] = useState<CreateMerchantPayload>({
-    merchantName: initialData.merchantName || '',
-    merchantEmail: initialData.merchantEmail || '',
-    merchantPhone: initialData.merchantPhone || '',
-    businessName: initialData.businessName || '',
-    businessType: initialData.businessType || 'individual',
-    businessCategory: initialData.businessCategory || '',
-    country: initialData.country || 'India',
-    nationality: initialData.nationality || 'Indian',
-    mode: initialData.mode || 'test',
-    ...initialData
+    merchantName: initialData.merchantName || "",
+    merchantEmail: initialData.merchantEmail || "",
+    merchantPhone: initialData.merchantPhone || "",
+    businessName: initialData.businessName || "",
+    businessType: initialData.businessType || "individual",
+    businessCategory: initialData.businessCategory || "",
+    country: initialData.country || "India",
+    nationality: initialData.nationality || "Indian",
+    mode: initialData.mode || "test",
+    ...initialData,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<'form' | 'backend' | 'merchant'>('form');
+  const [step, setStep] = useState<"form" | "backend" | "merchant">("form");
   const [backendResponse, setBackendResponse] = useState<any>(null);
 
   // Handle errors from both hooks
@@ -76,38 +86,37 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
-      
+
       // REMOVED: Token check - SDK must NOT block flow if token is missing
 
       let backendResult = null;
-      
+
       // 📤 STEP 1: Developer ka backend API call (if provided)
       if (onSubmitToBackend) {
-        setStep('backend');
-        console.log('📤 Calling developer backend API...');
-        
+        setStep("backend");
+        console.log("📤 Calling developer backend API...");
+
         backendResult = await submitToBackend(formData, onSubmitToBackend);
         setBackendResponse(backendResult);
-        
-        console.log('✅ Backend API response received:', backendResult);
+
+        console.log("✅ Backend API response received:", backendResult);
       }
 
       // 🚀 STEP 2: Create merchant in AirXPay
-      setStep('merchant');
-      console.log('🚀 Creating merchant in AirXPay...');
-      
+      setStep("merchant");
+      console.log("🚀 Creating merchant in AirXPay...");
+
       const merchantResponse = await createMerchant(formData);
-      
-      console.log('✅ Merchant created in AirXPay:', merchantResponse);
-      
+
+      console.log("✅ Merchant created in AirXPay:", merchantResponse);
+
       // 🎉 STEP 3: Success callback with both responses
       onSuccess({
         backend: backendResult,
-        merchant: merchantResponse
+        merchant: merchantResponse,
       });
-
     } catch (err: any) {
-      console.error('❌ Error:', err);
+      console.error("❌ Error:", err);
       onError?.(err);
     } finally {
       setIsSubmitting(false);
@@ -115,12 +124,15 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   };
 
   const isFormValid = (): boolean => {
-    const requiredFields: (keyof CreateMerchantPayload)[] = ['merchantName', 'merchantEmail'];
-    if (formData.businessType === 'company') {
-      requiredFields.push('businessName');
+    const requiredFields: (keyof CreateMerchantPayload)[] = [
+      "merchantName",
+      "merchantEmail",
+    ];
+    if (formData.businessType === "company") {
+      requiredFields.push("businessName");
     }
 
-    const allFilled = requiredFields.every(field => {
+    const allFilled = requiredFields.every((field) => {
       const value = formData[field];
       return value && value.toString().trim().length > 0;
     });
@@ -133,13 +145,10 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
-      <LinearGradient
-        colors={['#FFFFFF', '#F8F9FA']}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={["#FFFFFF", "#F8F9FA"]} style={styles.gradient}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -148,7 +157,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
           <Surface style={styles.headerCard}>
             <View style={styles.headerIcon}>
               <LinearGradient
-                colors={['#0066CC', '#0099FF']}
+                colors={["#0066CC", "#0099FF"]}
                 style={styles.iconGradient}
               >
                 <IconButton icon="check-circle" size={24} iconColor="#FFFFFF" />
@@ -156,7 +165,9 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
             </View>
             <View style={styles.headerText}>
               <Text style={styles.title}>{UI_TEXTS.FINAL_STEP.TITLE}</Text>
-              <Text style={styles.subtitle}>{UI_TEXTS.FINAL_STEP.SUBTITLE}</Text>
+              <Text style={styles.subtitle}>
+                {UI_TEXTS.FINAL_STEP.SUBTITLE}
+              </Text>
             </View>
           </Surface>
 
@@ -187,7 +198,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
               <View style={styles.progressLine} />
               <View style={styles.progressStep}>
                 <LinearGradient
-                  colors={['#0066CC', '#0099FF']}
+                  colors={["#0066CC", "#0099FF"]}
                   style={styles.progressDotActive}
                 />
                 <Text style={styles.progressTextActive}>Final</Text>
@@ -197,7 +208,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
             {/* Review Section */}
             <View style={styles.reviewSection}>
               <Text style={styles.reviewTitle}>Review Your Information</Text>
-              
+
               <View style={styles.reviewItem}>
                 <Text style={styles.reviewLabel}>Business Name</Text>
                 <Text style={styles.reviewValue}>
@@ -213,14 +224,18 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
               {formData.merchantPhone && (
                 <View style={styles.reviewItem}>
                   <Text style={styles.reviewLabel}>Phone</Text>
-                  <Text style={styles.reviewValue}>{formData.merchantPhone}</Text>
+                  <Text style={styles.reviewValue}>
+                    {formData.merchantPhone}
+                  </Text>
                 </View>
               )}
 
               <View style={styles.reviewItem}>
                 <Text style={styles.reviewLabel}>Business Type</Text>
                 <Text style={styles.reviewValue}>
-                  {formData.businessType === 'company' ? 'Company' : 'Individual'}
+                  {formData.businessType === "company"
+                    ? "Company"
+                    : "Individual"}
                 </Text>
               </View>
 
@@ -231,14 +246,22 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
 
               <View style={styles.reviewItem}>
                 <Text style={styles.reviewLabel}>Mode</Text>
-                <View style={[
-                  styles.modeBadge,
-                  formData.mode === 'live' ? styles.liveBadge : styles.testBadge
-                ]}>
-                  <Text style={[
-                    styles.modeText,
-                    formData.mode === 'live' ? styles.liveText : styles.testText
-                  ]}>
+                <View
+                  style={[
+                    styles.modeBadge,
+                    formData.mode === "live"
+                      ? styles.liveBadge
+                      : styles.testBadge,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modeText,
+                      formData.mode === "live"
+                        ? styles.liveText
+                        : styles.testText,
+                    ]}
+                  >
                     {formData.mode?.toUpperCase()}
                   </Text>
                 </View>
@@ -247,9 +270,14 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
 
             {/* Terms Agreement */}
             <View style={styles.termsContainer}>
-              <IconButton icon="checkbox-marked-circle" size={20} iconColor="#10B981" />
+              <IconButton
+                icon="checkbox-marked-circle"
+                size={20}
+                iconColor="#10B981"
+              />
               <Text style={styles.termsText}>
-                I confirm that all information provided is accurate and complete.
+                I confirm that all information provided is accurate and
+                complete.
               </Text>
             </View>
 
@@ -257,22 +285,28 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!isFormValid() || isLoading) && styles.submitButtonDisabled
+                (!isFormValid() || isLoading) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
               disabled={!isFormValid() || isLoading}
             >
               <LinearGradient
-                colors={isFormValid() && !isLoading ? ['#0066CC', '#0099FF'] : ['#9CA3AF', '#9CA3AF']}
+                colors={
+                  isFormValid() && !isLoading
+                    ? ["#0066CC", "#0099FF"]
+                    : ["#9CA3AF", "#9CA3AF"]
+                }
                 style={styles.submitGradient}
               >
                 {isLoading ? (
                   <View style={styles.loadingContent}>
                     <ActivityIndicator size="small" color="#FFFFFF" />
                     <Text style={styles.submitButtonText}>
-                      {step === 'backend' ? 'Calling Backend...' : 
-                       step === 'merchant' ? 'Creating Account...' : 
-                       UI_TEXTS.FINAL_STEP.PROCESSING}
+                      {step === "backend"
+                        ? "Calling Backend..."
+                        : step === "merchant"
+                          ? "Creating Account..."
+                          : UI_TEXTS.FINAL_STEP.PROCESSING}
                     </Text>
                   </View>
                 ) : (
@@ -293,7 +327,7 @@ export const FinalStepScreen: React.FC<FinalStepScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   gradient: {
     flex: 1,
@@ -303,10 +337,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   headerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginBottom: 16,
     elevation: 2,
@@ -318,46 +352,46 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerText: {
     flex: 1,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 4,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
     elevation: 2,
   },
   progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 24,
   },
   progressStep: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   progressDot: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   progressDotCompleted: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   progressDotActive: {
     width: 24,
@@ -367,48 +401,48 @@ const styles = StyleSheet.create({
   progressLine: {
     width: 20,
     height: 2,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
     marginHorizontal: 4,
   },
   progressText: {
     fontSize: 10,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 4,
   },
   progressTextActive: {
     fontSize: 10,
-    color: '#0066CC',
+    color: "#0066CC",
     marginTop: 4,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   reviewSection: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
   reviewTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 12,
   },
   reviewItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   reviewLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   reviewValue: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: "500",
+    color: "#111827",
   },
   modeBadge: {
     paddingHorizontal: 8,
@@ -416,25 +450,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   liveBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: "#FEE2E2",
   },
   testBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: "#FEF3C7",
   },
   modeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   liveText: {
-    color: '#DC2626',
+    color: "#DC2626",
   },
   testText: {
-    color: '#D97706',
+    color: "#D97706",
   },
   termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
     borderRadius: 8,
     padding: 12,
     marginBottom: 20,
@@ -442,29 +476,29 @@ const styles = StyleSheet.create({
   termsText: {
     flex: 1,
     fontSize: 13,
-    color: '#065F46',
+    color: "#065F46",
     marginLeft: 8,
   },
   submitButton: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   submitButtonDisabled: {
     opacity: 0.7,
   },
   submitGradient: {
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   loadingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
 });

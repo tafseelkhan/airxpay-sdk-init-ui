@@ -55,7 +55,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
-        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
@@ -78,7 +77,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
-        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
@@ -142,7 +140,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             <ActivityIndicator size="small" color="#0066CC" />
           ) : (
             <>
-              <MaterialIcons name="attach-file" size={28} color="#666" />
+              <MaterialIcons name="cloud-upload" size={28} color="#666" />
               <Text style={styles.uploadText}>Tap to upload</Text>
               {mode === "test" && (
                 <Text style={styles.testModeHint}>(Choose File)</Text>
