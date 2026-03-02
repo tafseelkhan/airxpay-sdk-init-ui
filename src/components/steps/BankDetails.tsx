@@ -1,5 +1,4 @@
 // components/steps/BankDetails.tsx
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -208,13 +207,12 @@ const BankDetails: React.FC<BankDetailsProps> = ({
     });
   };
 
-  const handleChequeUpload = async (file: any) => {
+  // ✅ FIXED: Handle cheque upload - receives base64 string directly
+  const handleChequeUpload = async (base64String: string) => {
     setUploading(true);
-    // Simulate upload
-    setTimeout(() => {
-      setCancelledCheque(file.uri || "uploaded_cheque.jpg");
-      setUploading(false);
-    }, 1000);
+    // ✅ Directly store the base64 string
+    setCancelledCheque(base64String);
+    setUploading(false);
   };
 
   const handleChequeRemove = () => {

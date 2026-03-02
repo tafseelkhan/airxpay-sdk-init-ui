@@ -1,5 +1,4 @@
 // components/steps/KYCVerification.tsx
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,7 +9,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  TextInput as RNTextInput,
 } from "react-native";
 import {
   TextInput,
@@ -250,46 +248,27 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({
     });
   };
 
-  const validateDocumentType = (file: any, documentKey: string): boolean => {
-    const document = REQUIRED_DOCUMENTS.find((doc) => doc.key === documentKey);
-    if (!document || !document.acceptedTypes) return true;
-
-    const mimeType = file.mimeType || "";
-    if (!document.acceptedTypes.includes(mimeType)) {
-      Alert.alert(
-        "Invalid File Type",
-        `Please upload a valid file type: ${document.acceptedTypes.map((t) => t.split("/")[1]).join(", ")}`,
-      );
-      return false;
-    }
-    return true;
-  };
-
+  // ✅ FIXED: Handle document upload - receives base64 string directly
   const handleDocumentUpload = async (
     documentKey: keyof Pick<
       KYCDetails,
       "panCardUrl" | "aadhaarUrl" | "addressProofUrl" | "selfieUrl"
     >,
-    file: any,
+    base64String: string, // ✅ Now receives base64 string, not file object
   ) => {
-    // Validate file type
-    if (!validateDocumentType(file, documentKey)) {
-      return;
-    }
-
     setUploadingFor(documentKey as string);
 
-    // Simulate upload delay
-    setTimeout(() => {
-      setKycDetails((prev) => ({
-        ...prev,
-        [documentKey]: file.uri || "uploaded_file.jpg",
-      }));
-      setUploadingFor(null);
+    // ✅ Directly store the base64 string - it's already validated!
+    setKycDetails((prev) => ({
+      ...prev,
+      [documentKey]: base64String,
+    }));
 
-      if (mode === "test") {
-      }
-    }, 1000);
+    setUploadingFor(null);
+
+    if (mode === "test") {
+      console.log(`✅ ${documentKey} uploaded in test mode`);
+    }
   };
 
   const handleDocumentRemove = (
@@ -564,7 +543,7 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({
                   Enter your identification numbers
                 </Text>
 
-                {TEXT_FIELDS.map((field, index) => (
+                {TEXT_FIELDS.map((field) => (
                   <View key={field.key} style={styles.fieldContainer}>
                     <Text style={styles.label}>
                       {field.label}{" "}
@@ -614,7 +593,9 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({
                       description={doc.description}
                       icon={doc.icon}
                       value={kycDetails[doc.key]}
-                      onUpload={(file) => handleDocumentUpload(doc.key, file)}
+                      onUpload={(base64) =>
+                        handleDocumentUpload(doc.key, base64)
+                      }
                       onRemove={() => handleDocumentRemove(doc.key)}
                       uploading={uploadingFor === doc.key}
                       mode={mode}

@@ -1,6 +1,5 @@
 // components/common/FileUploader.tsx
-
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -13,14 +12,19 @@ import { ActivityIndicator } from "react-native-paper";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Mode } from "../../types/merchantTypes";
+import {
+  convertFileToBase64,
+  getMimeTypeFromAsset,
+  allowedTypes,
+} from "../../browsers/filesBrowser";
 
 interface FileUploaderProps {
   label: string;
   required?: boolean;
   description?: string;
   icon?: string;
-  value?: string;
-  onUpload: (file: any) => void;
+  value?: string; // Base64 string with data:image prefix
+  onUpload: (base64: string) => void; // ✅ Emits base64 string
   onRemove: () => void;
   uploading?: boolean;
   mode?: Mode;
@@ -38,6 +42,57 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   mode = "test",
   accept = "image/*",
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  /**
+   * Process selected asset - convert to base64 and validate
+   */
+  const processAsset = async (asset: ImagePicker.ImagePickerAsset) => {
+    try {
+      setIsProcessing(true);
+
+      // Step 1: Get proper MIME type from asset
+      let mimeType: string;
+      try {
+        mimeType = getMimeTypeFromAsset(asset);
+        console.log(`📁 Selected file type: ${mimeType}`);
+      } catch (error: any) {
+        Alert.alert("Invalid File Type", error.message);
+        return;
+      }
+
+      // Step 2: Convert to base64
+      try {
+        const base64Data = await convertFileToBase64({
+          uri: asset.uri,
+          type: mimeType,
+        });
+
+        // Step 3: Verify we got a valid base64 string
+        if (!base64Data || !base64Data.startsWith("data:")) {
+          throw new Error("Invalid base64 data generated");
+        }
+
+        console.log(`✅ File converted successfully`);
+
+        // Step 4: Emit base64 DIRECTLY to parent
+        onUpload(base64Data); // ✅ Parent receives base64 string, not object
+      } catch (error: any) {
+        console.error("Conversion error:", error);
+        Alert.alert(
+          "Conversion Failed",
+          error.message || "Failed to process file. Please try again.",
+        );
+      }
+    } catch (error) {
+      console.error("Asset processing error:", error);
+      Alert.alert("Error", "Failed to process file");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ✅ Pick image from gallery
   const pickImage = async () => {
     try {
       const { status } =
@@ -45,7 +100,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       if (status !== "granted") {
         Alert.alert(
           "Permission needed",
-          "Please grant camera roll permissions",
+          "Please grant camera roll permissions to select images",
         );
         return;
       }
@@ -55,21 +110,28 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        base64: false,
+        allowsMultipleSelection: false,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        onUpload(result.assets[0]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await processAsset(result.assets[0]);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
+      console.error("Gallery error:", error);
+      Alert.alert("Error", "Failed to open image gallery");
     }
   };
 
+  // ✅ Take photo with camera
   const takePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission needed", "Please grant camera permissions");
+        Alert.alert(
+          "Permission needed",
+          "Please grant camera permissions to take photos",
+        );
         return;
       }
 
@@ -77,24 +139,33 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        base64: false,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        onUpload(result.assets[0]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await processAsset(result.assets[0]);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to take photo");
+      console.error("Camera error:", error);
+      Alert.alert("Error", "Failed to open camera");
     }
   };
 
+  // ✅ Show options menu
   const showOptions = () => {
-    Alert.alert(`Upload ${label}`, "Choose an option", [
-      { text: "Take Photo", onPress: takePhoto },
-      { text: "Choose from Gallery", onPress: pickImage },
-      { text: "Cancel", style: "cancel" },
-    ]);
+    Alert.alert(
+      `Upload ${label}`,
+      `Choose an option (Allowed: ${allowedTypes.map((t) => t.split("/")[1].toUpperCase()).join(", ")})`,
+      [
+        { text: "Take Photo", onPress: takePhoto },
+        { text: "Choose from Gallery", onPress: pickImage },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true },
+    );
   };
 
+  // ✅ Handle remove with confirmation
   const handleRemove = () => {
     Alert.alert(
       "Remove Document",
@@ -105,6 +176,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       ],
     );
   };
+
+  const isLoading = uploading || isProcessing;
 
   return (
     <View style={styles.container}>
@@ -117,14 +190,20 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       {value ? (
         <View style={styles.previewContainer}>
+          {/* ✅ value is base64 string with data:image prefix - works directly */}
           <Image source={{ uri: value }} style={styles.preview} />
           <View style={styles.previewActions}>
-            <TouchableOpacity onPress={showOptions} style={styles.changeButton}>
+            <TouchableOpacity
+              onPress={showOptions}
+              style={styles.changeButton}
+              disabled={isLoading}
+            >
               <Text style={styles.changeButtonText}>Change</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleRemove}
               style={styles.removeButton}
+              disabled={isLoading}
             >
               <Text style={styles.removeButtonText}>Remove</Text>
             </TouchableOpacity>
@@ -132,18 +211,28 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         </View>
       ) : (
         <TouchableOpacity
-          style={styles.uploadArea}
+          style={[styles.uploadArea, isLoading && styles.uploadAreaDisabled]}
           onPress={showOptions}
-          disabled={uploading}
+          disabled={isLoading}
+          activeOpacity={0.7}
         >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#0066CC" />
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#0066CC" />
+              <Text style={styles.loadingText}>Processing...</Text>
+            </View>
           ) : (
             <>
-              <MaterialIcons name="cloud-upload" size={28} color="#666" />
+              <MaterialIcons name="cloud-upload" size={32} color="#6B7280" />
               <Text style={styles.uploadText}>Tap to upload</Text>
+              <Text style={styles.uploadHint}>
+                {allowedTypes
+                  .map((t) => t.split("/")[1].toUpperCase())
+                  .join(", ")}{" "}
+                (max 10MB)
+              </Text>
               {mode === "test" && (
-                <Text style={styles.testModeHint}>(Choose File)</Text>
+                <Text style={styles.testModeHint}>(Test Mode)</Text>
               )}
             </>
           )}
@@ -153,6 +242,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   );
 };
 
+// Styles remain exactly the same
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
@@ -162,8 +252,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
+    fontWeight: "600",
+    color: "#1F2937",
   },
   required: {
     color: "#EF4444",
@@ -177,34 +267,53 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#E5E7EB",
     borderStyle: "dashed",
-    borderRadius: 8,
-    padding: 20,
+    borderRadius: 12,
+    padding: 24,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F9FAFB",
+    minHeight: 140,
   },
-  uploadIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+  uploadAreaDisabled: {
+    opacity: 0.7,
+    backgroundColor: "#F3F4F6",
   },
-  uploadText: {
+  loadingContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  loadingText: {
     fontSize: 14,
     color: "#6B7280",
+    marginTop: 4,
+  },
+  uploadText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#374151",
+    marginTop: 8,
+  },
+  uploadHint: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 4,
   },
   testModeHint: {
     fontSize: 10,
     color: "#9CA3AF",
-    marginTop: 4,
+    marginTop: 8,
+    fontStyle: "italic",
   },
   previewContainer: {
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: "hidden",
+    backgroundColor: "#FFFFFF",
   },
   preview: {
     width: "100%",
-    height: 120,
+    height: 160,
     resizeMode: "cover",
   },
   previewActions: {
@@ -214,25 +323,25 @@ const styles = StyleSheet.create({
   },
   changeButton: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     alignItems: "center",
     backgroundColor: "#F9FAFB",
   },
   changeButtonText: {
-    color: "#0066CC",
+    color: "#2563EB",
     fontSize: 14,
     fontWeight: "500",
   },
   removeButton: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     alignItems: "center",
     backgroundColor: "#FEF2F2",
     borderLeftWidth: 1,
     borderLeftColor: "#E5E7EB",
   },
   removeButtonText: {
-    color: "#EF4444",
+    color: "#DC2626",
     fontSize: 14,
     fontWeight: "500",
   },
