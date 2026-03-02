@@ -1,27 +1,55 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image
+  Image,
+  DimensionValue
 } from 'react-native';
 import {
   Text,
   Surface,
   ActivityIndicator,
-  IconButton
+  IconButton,
+  Avatar
 } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UI_TEXTS } from '../../etc/constants';
 
+// ==================== TYPE DEFINITIONS ====================
+
+interface MerchantData {
+  status: string;
+  kycStatus: string;
+  dob: string;
+  merchantDID: string;
+  walletId: string;
+  merchantName: string;
+  merchantEmail: string;
+  merchantPhone: string;
+  image?: string; // New profile image field (optional)
+}
+
+interface CustomButton {
+  label: string;
+  onPress: () => void;
+  backgroundColor?: string;
+  textColor?: string;
+  width?: DimensionValue;
+  height?: number;
+  borderRadius?: number;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  icon?: string;
+  iconPosition?: 'left' | 'right';
+  navigateTo?: string;
+}
+
 interface OnboardingCompleteScreenProps {
-  developerData?: any; // Only developer-provided data
+  developerData?: MerchantData;
   loading?: boolean;
-  onContinue?: () => void;
-  onLogout?: () => void;
-  autoFetch?: boolean; // Kept for backward compatibility but ignored
-  // New theme props for developer customization
+  autoFetch?: boolean;
   theme?: {
     primaryColor?: string;
     secondaryColor?: string;
@@ -30,26 +58,96 @@ interface OnboardingCompleteScreenProps {
     textColor?: string;
     accentColor?: string;
   };
+  buttons?: CustomButton[];
 }
 
-// Default AirXPay branding colors (fixed - developer can't change these)
+interface ThemeColors {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  cardColor: string;
+  textColor: string;
+  accentColor: string;
+}
+
+// ==================== TYPE GUARDS ====================
+
+const isString = (value: any): value is string => {
+  return typeof value === 'string' && value !== null && value !== undefined;
+};
+
+const safeToUpperCase = (value: any): string => {
+  if (!isString(value)) return 'N/A';
+  return value.toUpperCase();
+};
+
+const safeToLowerCase = (value: any): string => {
+  if (!isString(value)) return '';
+  return value.toLowerCase();
+};
+
+// ==================== FORMATTING HELPERS ====================
+
+const getStatusColor = (status: any): string => {
+  const statusStr = safeToLowerCase(status);
+  
+  switch(statusStr) {
+    case 'active': return '#10B981';
+    case 'pending': return '#F59E0B';
+    case 'inactive': return '#EF4444';
+    case 'approved': return '#10B981';
+    case 'rejected': return '#EF4444';
+    default: return '#6B7280';
+  }
+};
+
+const formatDate = (dateString: any): string => {
+  if (!dateString || !isString(dateString)) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    return String(dateString) || 'N/A';
+  }
+};
+
+const formatWalletId = (id: any): string => {
+  if (!id || !isString(id)) return 'N/A';
+  if (id.length > 20) {
+    return `${id.substring(0, 8)}...${id.substring(id.length - 8)}`;
+  }
+  return id;
+};
+
+const getInitials = (name: any): string => {
+  if (!name || !isString(name)) return 'M';
+  return name.charAt(0).toUpperCase();
+};
+
+// ==================== BRANDING CONSTANTS ====================
+
 const AIRXPAY_BRANDING = {
   logo: require('../../assets/images/airxpay.png'),
   name: 'AirXPay',
-  tagline: 'Powered by AirXPay',
+  tagline: 'Secure Digital Wallet',
   copyright: '© 2024 AirXPay. All rights reserved.',
-};
+} as const;
+
+// ==================== MAIN COMPONENT ====================
 
 export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> = ({
   developerData,
   loading = false,
-  onContinue,
-  onLogout,
   autoFetch = false,
-  theme = {} // Developer can customize these
+  theme = {},
+  buttons = []
 }) => {
-  // Merge developer theme with defaults
-  const customTheme = {
+  const customTheme: ThemeColors = {
     primaryColor: theme.primaryColor || '#0066CC',
     secondaryColor: theme.secondaryColor || '#0099FF',
     backgroundColor: theme.backgroundColor || '#FFFFFF',
@@ -58,74 +156,6 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
     accentColor: theme.accentColor || '#10B981',
   };
 
-  // Function to format and display developer data in a beautiful way
-  const renderFormattedData = (data: any) => {
-    if (!data) return null;
-
-    // If data is a simple object, show it in a card format
-    if (typeof data === 'object' && !Array.isArray(data)) {
-      return Object.entries(data).map(([key, value]) => {
-        // Skip rendering if value is null/undefined
-        if (value === null || value === undefined) return null;
-
-        // Format the key to be more readable
-        const formattedKey = key
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/^./, str => str.toUpperCase());
-
-        return (
-          <View key={key} style={[styles.infoRow, { borderBottomColor: customTheme.cardColor }]}>
-            <Text style={[styles.infoLabel, { color: customTheme.textColor + '80' }]}>{formattedKey}</Text>
-            <View style={styles.infoValueContainer}>
-              {typeof value === 'object' ? (
-                <View style={[styles.nestedObject, { borderLeftColor: customTheme.cardColor }]}>
-                  {Object.entries(value).map(([nestedKey, nestedValue]) => (
-                    <View key={nestedKey} style={styles.nestedRow}>
-                      <Text style={[styles.nestedLabel, { color: customTheme.textColor + '80' }]}>
-                        {nestedKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
-                      </Text>
-                      <Text style={[styles.nestedValue, { color: customTheme.textColor }]}>
-                        {String(nestedValue)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={[styles.infoValue, { color: customTheme.textColor }]}>
-                  {typeof value === 'boolean' 
-                    ? (value ? 'Yes' : 'No')
-                    : String(value)
-                  }
-                </Text>
-              )}
-            </View>
-          </View>
-        );
-      });
-    }
-
-    // If data is an array, show it in a list
-    if (Array.isArray(data)) {
-      return data.map((item, index) => (
-        <View key={index} style={[styles.arrayItem, { backgroundColor: customTheme.cardColor }]}>
-          <Text style={[styles.arrayIndex, { color: customTheme.textColor }]}>Item {index + 1}</Text>
-          {typeof item === 'object' 
-            ? renderFormattedData(item)
-            : <Text style={[styles.infoValue, { color: customTheme.textColor }]}>{String(item)}</Text>
-          }
-        </View>
-      ));
-    }
-
-    // Simple value
-    return (
-      <View style={[styles.infoRow, { borderBottomColor: customTheme.cardColor }]}>
-        <Text style={[styles.infoValue, { color: customTheme.textColor }]}>{String(data)}</Text>
-      </View>
-    );
-  };
-
-  // AirXPay Branding Component (Fixed - Developer can't change this)
   const AirXPayBranding = () => (
     <View style={styles.brandingContainer}>
       <Image 
@@ -138,6 +168,95 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
     </View>
   );
 
+  // Render profile image or avatar
+  const renderProfileImage = () => {
+    if (developerData?.image && isString(developerData.image)) {
+      return (
+        <Image 
+          source={{ uri: developerData.image }}
+          style={styles.profileImage}
+          resizeMode="cover"
+        />
+      );
+    }
+    return (
+      <Avatar.Text 
+        size={80} 
+        label={getInitials(developerData?.merchantName)}
+        style={[styles.avatar, { backgroundColor: customTheme.primaryColor }]}
+        labelStyle={styles.avatarLabel}
+      />
+    );
+  };
+
+  // Render custom button with developer's configuration
+  const renderCustomButton = (button: CustomButton, index: number) => {
+    const {
+      label,
+      onPress,
+      backgroundColor = customTheme.primaryColor,
+      textColor = '#FFFFFF',
+      width = '100%',
+      height = 56,
+      borderRadius = 16,
+      fontSize = 16,
+      fontWeight = '600',
+      icon,
+      iconPosition = 'left'
+    } = button;
+
+    const buttonStyles = {
+      width,
+      height,
+      borderRadius,
+      backgroundColor,
+    };
+
+    const textStyles = {
+      color: textColor,
+      fontSize,
+      fontWeight,
+    };
+
+    const renderContent = () => {
+      if (icon) {
+        return (
+          <View style={[styles.buttonContent, { flexDirection: iconPosition === 'left' ? 'row' : 'row-reverse' }]}>
+            <IconButton 
+              icon={icon} 
+              size={fontSize + 4} 
+              iconColor={textColor} 
+              style={styles.buttonIcon}
+            />
+            <Text style={[styles.customButtonText, textStyles]}>{label}</Text>
+          </View>
+        );
+      }
+      return <Text style={[styles.customButtonText, textStyles]}>{label}</Text>;
+    };
+
+    return (
+      <TouchableOpacity
+        key={index}
+        style={[styles.customButton, buttonStyles]}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        {backgroundColor.includes('gradient') ? (
+          <LinearGradient
+            colors={[backgroundColor, customTheme.secondaryColor]}
+            style={[styles.customButtonGradient, { borderRadius, height, width }]}
+          >
+            {renderContent()}
+          </LinearGradient>
+        ) : (
+          renderContent()
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Loading state
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: customTheme.backgroundColor }]}>
@@ -146,7 +265,6 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
           style={styles.gradient}
         >
           <View style={styles.loadingContainer}>
-            {/* Fixed AirXPay Branding at top */}
             <AirXPayBranding />
             
             <View style={styles.iconContainer}>
@@ -157,7 +275,9 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
                 <ActivityIndicator size="large" color="#FFFFFF" />
               </LinearGradient>
             </View>
-            <Text style={[styles.loadingTitle, { color: customTheme.textColor }]}>Processing...</Text>
+            <Text style={[styles.loadingTitle, { color: customTheme.textColor }]}>
+              Setting up your account...
+            </Text>
             <Text style={[styles.loadingSubtitle, { color: customTheme.textColor + '80' }]}>
               Please wait while we complete your registration
             </Text>
@@ -167,6 +287,7 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
     );
   }
 
+  // No data state
   if (!developerData) {
     return (
       <View style={[styles.container, { backgroundColor: customTheme.backgroundColor }]}>
@@ -175,7 +296,6 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
           style={styles.gradient}
         >
           <View style={styles.emptyContainer}>
-            {/* Fixed AirXPay Branding at top */}
             <AirXPayBranding />
             
             <View style={[styles.iconContainer, styles.emptyIconContainer, { backgroundColor: customTheme.cardColor }]}>
@@ -186,9 +306,11 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
                 style={styles.emptyIcon}
               />
             </View>
-            <Text style={[styles.emptyTitle, { color: customTheme.textColor }]}>Processing</Text>
+            <Text style={[styles.emptyTitle, { color: customTheme.textColor }]}>
+              Processing
+            </Text>
             <Text style={[styles.emptySubtitle, { color: customTheme.textColor + '80' }]}>
-              Waiting for response from your backend...
+              Waiting for merchant data...
             </Text>
             <ActivityIndicator size="small" color={customTheme.primaryColor} style={styles.refreshLoader} />
           </View>
@@ -197,6 +319,7 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
     );
   }
 
+  // Success state with specific fields
   return (
     <View style={[styles.container, { backgroundColor: customTheme.backgroundColor }]}>
       <LinearGradient
@@ -207,63 +330,171 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Fixed AirXPay Branding at top */}
           <AirXPayBranding />
 
-          {/* Success Icon - Using custom theme colors */}
-          <View style={styles.iconContainer}>
+          {/* Success Header with Profile Image/Avatar */}
+          <View style={styles.headerContainer}>
             <LinearGradient
               colors={[customTheme.accentColor, customTheme.primaryColor]}
               style={styles.successIcon}
             >
               <IconButton icon="check" size={40} iconColor="#FFFFFF" />
             </LinearGradient>
+            
+            {renderProfileImage()}
           </View>
 
-          {/* Title - Original Style with custom text color */}
-          <Text style={[styles.title, { color: customTheme.textColor }]}>{UI_TEXTS.ONBOARDING_COMPLETE.TITLE}</Text>
-          <Text style={[styles.subtitle, { color: customTheme.textColor + '80' }]}>{UI_TEXTS.ONBOARDING_COMPLETE.SUBTITLE}</Text>
+          {/* Fixed Welcome Message - Using merchantName instead of generic "Merchant" */}
+          <Text style={[styles.title, { color: customTheme.textColor }]}>
+            Welcome, {developerData.merchantName || 'Merchant'}!
+          </Text>
+          <Text style={[styles.subtitle, { color: customTheme.textColor + '80' }]}>
+            Your account has been successfully created
+          </Text>
 
-          {/* Developer Data Card - Using custom theme colors */}
+          {/* Status Cards Row */}
+          <View style={styles.statusRow}>
+            <Surface style={[styles.statusCard, { backgroundColor: customTheme.backgroundColor }]}>
+              <Text style={[styles.statusCardLabel, { color: customTheme.textColor + '80' }]}>Account</Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(developerData.status) + '20' }]}>
+                <View style={[styles.statusDot, { backgroundColor: getStatusColor(developerData.status) }]} />
+                <Text style={[styles.statusBadgeText, { color: getStatusColor(developerData.status) }]}>
+                  {safeToUpperCase(developerData.status)}
+                </Text>
+              </View>
+            </Surface>
+
+            <Surface style={[styles.statusCard, { backgroundColor: customTheme.backgroundColor }]}>
+              <Text style={[styles.statusCardLabel, { color: customTheme.textColor + '80' }]}>KYC</Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(developerData.kycStatus) + '20' }]}>
+                <View style={[styles.statusDot, { backgroundColor: getStatusColor(developerData.kycStatus) }]} />
+                <Text style={[styles.statusBadgeText, { color: getStatusColor(developerData.kycStatus) }]}>
+                  {safeToUpperCase(developerData.kycStatus)}
+                </Text>
+              </View>
+            </Surface>
+          </View>
+
+          {/* Main Info Card */}
           <Surface style={[styles.infoCard, { backgroundColor: customTheme.backgroundColor }]}>
             <View style={[styles.cardHeader, { borderBottomColor: customTheme.cardColor }]}>
-              <IconButton icon="check-circle" size={24} iconColor={customTheme.accentColor} />
-              <Text style={[styles.cardHeaderText, { color: customTheme.textColor }]}>Registration Details</Text>
+              <IconButton icon="account-details" size={24} iconColor={customTheme.primaryColor} />
+              <Text style={[styles.cardHeaderText, { color: customTheme.textColor }]}>
+                Merchant Information
+              </Text>
             </View>
             
             <View style={styles.cardContent}>
-              {renderFormattedData(developerData)}
+              {/* Merchant Name */}
+              <View style={styles.detailRow}>
+                <View style={[styles.iconCircle, { backgroundColor: customTheme.primaryColor + '20' }]}>
+                  <IconButton icon="account" size={20} iconColor={customTheme.primaryColor} style={styles.detailIcon} />
+                </View>
+                <View style={styles.detailTextContainer}>
+                  <Text style={[styles.detailLabel, { color: customTheme.textColor + '80' }]}>Merchant Name</Text>
+                  <Text style={[styles.detailValue, { color: customTheme.textColor }]}>{developerData.merchantName || 'N/A'}</Text>
+                </View>
+              </View>
+
+              {/* Email */}
+              <View style={styles.detailRow}>
+                <View style={[styles.iconCircle, { backgroundColor: customTheme.primaryColor + '20' }]}>
+                  <IconButton icon="email" size={20} iconColor={customTheme.primaryColor} style={styles.detailIcon} />
+                </View>
+                <View style={styles.detailTextContainer}>
+                  <Text style={[styles.detailLabel, { color: customTheme.textColor + '80' }]}>Email Address</Text>
+                  <Text style={[styles.detailValue, { color: customTheme.textColor }]}>{developerData.merchantEmail || 'N/A'}</Text>
+                </View>
+              </View>
+
+              {/* Phone */}
+              <View style={styles.detailRow}>
+                <View style={[styles.iconCircle, { backgroundColor: customTheme.primaryColor + '20' }]}>
+                  <IconButton icon="phone" size={20} iconColor={customTheme.primaryColor} style={styles.detailIcon} />
+                </View>
+                <View style={styles.detailTextContainer}>
+                  <Text style={[styles.detailLabel, { color: customTheme.textColor + '80' }]}>Phone Number</Text>
+                  <Text style={[styles.detailValue, { color: customTheme.textColor }]}>{developerData.merchantPhone || 'N/A'}</Text>
+                </View>
+              </View>
+
+              {/* Date of Birth */}
+              <View style={styles.detailRow}>
+                <View style={[styles.iconCircle, { backgroundColor: customTheme.primaryColor + '20' }]}>
+                  <IconButton icon="cake" size={20} iconColor={customTheme.primaryColor} style={styles.detailIcon} />
+                </View>
+                <View style={styles.detailTextContainer}>
+                  <Text style={[styles.detailLabel, { color: customTheme.textColor + '80' }]}>Date of Birth</Text>
+                  <Text style={[styles.detailValue, { color: customTheme.textColor }]}>{formatDate(developerData.dob)}</Text>
+                </View>
+              </View>
+
+              {/* Profile Image (if available) */}
+              {developerData.image && (
+                <View style={styles.detailRow}>
+                  <View style={[styles.iconCircle, { backgroundColor: customTheme.primaryColor + '20' }]}>
+                    <IconButton icon="image" size={20} iconColor={customTheme.primaryColor} style={styles.detailIcon} />
+                  </View>
+                  <View style={styles.detailTextContainer}>
+                    <Text style={[styles.detailLabel, { color: customTheme.textColor + '80' }]}>Profile Image</Text>
+                    <Text style={[styles.detailValue, { color: customTheme.textColor }]}>Available</Text>
+                  </View>
+                </View>
+              )}
             </View>
           </Surface>
 
-          {/* Action Buttons - Using custom theme colors */}
-          {onContinue && (
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={onContinue}
-            >
-              <LinearGradient
-                colors={[customTheme.primaryColor, customTheme.secondaryColor]}
-                style={styles.continueButtonGradient}
-              >
-                <Text style={styles.continueButtonText}>
-                  {UI_TEXTS.ONBOARDING_COMPLETE.CONTINUE_BUTTON}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {onLogout && (
-            <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-              <Text style={[styles.logoutButtonText, { color: customTheme.textColor + '80' }]}>
-                {UI_TEXTS.ONBOARDING_COMPLETE.LOGOUT_BUTTON}
+          {/* Wallet Information Card */}
+          <Surface style={[styles.walletCard, { backgroundColor: customTheme.backgroundColor }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: customTheme.cardColor }]}>
+              <IconButton icon="wallet" size={24} iconColor={customTheme.accentColor} />
+              <Text style={[styles.cardHeaderText, { color: customTheme.textColor }]}>
+                Wallet Details
               </Text>
-            </TouchableOpacity>
+            </View>
+            
+            <View style={styles.cardContent}>
+              {/* Wallet ID */}
+              <View style={styles.walletRow}>
+                <Text style={[styles.walletLabel, { color: customTheme.textColor + '80' }]}>Wallet ID</Text>
+                <View style={[styles.walletValueContainer, { backgroundColor: customTheme.cardColor }]}>
+                  <Text style={[styles.walletValue, { color: customTheme.textColor }]}>
+                    {formatWalletId(developerData.walletId)}
+                  </Text>
+                  <TouchableOpacity onPress={() => {/* Copy to clipboard */}}>
+                    <IconButton icon="content-copy" size={16} iconColor={customTheme.primaryColor} style={styles.copyIcon} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Merchant DID */}
+              <View style={styles.walletRow}>
+                <Text style={[styles.walletLabel, { color: customTheme.textColor + '80' }]}>Merchant DID</Text>
+                <View style={[styles.walletValueContainer, { backgroundColor: customTheme.cardColor }]}>
+                  <Text style={[styles.walletValue, { color: customTheme.textColor }]}>
+                    {formatWalletId(developerData.merchantDID)}
+                  </Text>
+                  <TouchableOpacity onPress={() => {/* Copy to clipboard */}}>
+                    <IconButton icon="content-copy" size={16} iconColor={customTheme.primaryColor} style={styles.copyIcon} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Surface>
+
+          {/* Custom Buttons - Developer can add multiple buttons */}
+          {buttons.length > 0 && (
+            <View style={styles.buttonsContainer}>
+              {buttons.map((button, index) => renderCustomButton(button, index))}
+            </View>
           )}
 
-          {/* Fixed AirXPay Footer */}
+          {/* Footer */}
           <View style={styles.footerContainer}>
             <Text style={[styles.footerText, { color: customTheme.textColor + '60' }]}>
+              {UI_TEXTS.ONBOARDING_COMPLETE.FOOTER}
+            </Text>
+            <Text style={[styles.footerText, { color: customTheme.textColor + '40', marginTop: 4 }]}>
               {AIRXPAY_BRANDING.copyright}
             </Text>
           </View>
@@ -273,7 +504,8 @@ export const OnboardingCompleteScreen: React.FC<OnboardingCompleteScreenProps> =
   );
 };
 
-// Updated styles with branding styles
+// ==================== STYLES ====================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -285,30 +517,211 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     padding: 20,
-    paddingTop: 20,
+    paddingTop: 40,
     paddingBottom: 30,
   },
-  // Branding Styles (Fixed - Developer can't override these)
   brandingContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    paddingVertical: 10,
+    marginBottom: 30,
+    paddingVertical: 15,
   },
   brandingLogo: {
-    width: 60,
-    height: 60,
-    marginBottom: 8,
+    width: 80,
+    height: 80,
+    marginBottom: 12,
   },
   brandingName: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#0066CC', // Fixed AirXPay blue
-    marginBottom: 2,
+    color: '#0066CC',
+    marginBottom: 4,
   },
   brandingTagline: {
-    fontSize: 12,
-    color: '#666666', // Fixed gray
+    fontSize: 14,
+    color: '#666666',
     fontWeight: '500',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    gap: 20,
+  },
+  iconContainer: {
+    marginBottom: 24,
+  },
+  successIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatar: {
+    marginLeft: 10,
+  },
+  avatarLabel: {
+    fontSize: 32,
+    fontWeight: '600',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginLeft: 10,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+    gap: 12,
+  },
+  statusCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    elevation: 2,
+    alignItems: 'center',
+  },
+  statusCardLabel: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoCard: {
+    width: '100%',
+    borderRadius: 20,
+    marginBottom: 16,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  walletCard: {
+    width: '100%',
+    borderRadius: 20,
+    marginBottom: 24,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  cardHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  detailIcon: {
+    margin: 0,
+  },
+  detailTextContainer: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  walletRow: {
+    marginBottom: 16,
+  },
+  walletLabel: {
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  walletValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+  walletValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  copyIcon: {
+    margin: 0,
+  },
+  buttonsContainer: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  customButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    overflow: 'hidden',
+  },
+  customButtonGradient: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customButtonText: {
+    textAlign: 'center',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonIcon: {
+    margin: 0,
   },
   footerContainer: {
     marginTop: 20,
@@ -322,7 +735,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
   },
-  // Loading Styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -346,128 +758,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  // Icon Styles
-  iconContainer: {
-    marginBottom: 24,
-  },
-  successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Title Styles
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  // Card Styles
-  infoCard: {
-    width: '100%',
-    borderRadius: 16,
-    marginBottom: 24,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  cardHeaderText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  // Info Row Styles
-  infoRow: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  infoLabel: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  infoValueContainer: {
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Nested Object Styles
-  nestedObject: {
-    marginTop: 8,
-    marginLeft: 8,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-  },
-  nestedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  nestedLabel: {
-    fontSize: 13,
-    flex: 1,
-  },
-  nestedValue: {
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
-    textAlign: 'right',
-  },
-  // Array Styles
-  arrayItem: {
-    marginVertical: 8,
-    padding: 12,
-    borderRadius: 8,
-  },
-  arrayIndex: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  // Button Styles
-  continueButton: {
-    width: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  continueButtonGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  logoutButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  logoutButtonText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  // Empty State Styles
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',

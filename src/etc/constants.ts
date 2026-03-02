@@ -19,8 +19,6 @@ export const UI_TEXTS = {
   ONBOARDING_COMPLETE: {
     TITLE: 'Welcome to AirXPay! 🎉',
     SUBTITLE: 'Your merchant account has been successfully created',
-    CONTINUE_BUTTON: 'Continue to Dashboard',
-    LOGOUT_BUTTON: 'Logout',
     FOOTER: 'You can now start accepting payments'
   },
   FINAL_STEP: {

@@ -468,8 +468,6 @@ const MerchantOnboardingSheet: React.FC<ExtendedMerchantOnboardingProps> = ({
           return (
             <OnboardingCompleteScreen
               developerData={merchantResponse}
-              onContinue={handleComplete}
-              onLogout={() => console.log('Logout')}
               autoFetch={false}
             />
           );
