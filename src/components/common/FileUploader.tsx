@@ -78,6 +78,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
