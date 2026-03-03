@@ -1,488 +1,436 @@
-```markdown
 # Changelog
 
-All notable changes to the `@flixora/airxpay-sdk-init-ui` package will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
-
 ## [Unreleased]
 
-### Added
-- Initial project setup and configuration
-- Core architecture with modular folder structure
-- TypeScript support with comprehensive type definitions
-- React Native Paper UI components integration
-- Expo Linear Gradient for modern UI effects
+### 🚀 Coming Soon
+- Biometric authentication support
+- Offline mode for merchant onboarding
+- Analytics dashboard integration
+- Push notifications for status updates
 
 ---
 
-## [1.0.0] - 2026-03-20
+## [0.0.5] - 2026-03-03
 
-### 🚀 Initial Release
+### 📦 Current Release
 
-#### Added
-- **Core Components**
-  - `MerchantOnboardingSheet` - Main 5-step onboarding container with animations
-  - `BasicDetailsForm` - Step 1: Merchant information collection
-  - `KYCVerification` - Step 2: KYC document upload and verification
-  - `BankDetails` - Step 3: Bank account details with validation
-  - `FinalStepScreen` - Step 4: Review and submit merchant data
-  - `OnboardingCompleteScreen` - Step 5: Success screen with status display
+#### ✨ New Features
 
-- **Context & Providers**
-  - `AirXPayProvider` - Global context for SDK configuration
-  - `useAirXPay` - Hook for accessing SDK context
-  - `useAirXPaySafe` - Safe version with null checks
-  - `useProviderReady` - Hook to check provider readiness
+##### 🔐 Provider & Context System
+- **`AirXPayProvider`** - React Context provider for SDK configuration
+  - Initializes SDK with public key
+  - Verifies public key automatically
+  - Provides loading and error states
+  - Logging control with `enableLogging` prop
 
-- **Custom Hooks**
-  - `useMerchantOnboarding` - Complete onboarding logic with API integration
-  - `useAirXPaySheet` - Hook for rendering onboarding sheet
+```tsx
+<AirXPayProvider publicKey="your_public_key" enableLogging={true}>
+  <MerchantOnboarding {...props} />
+</AirXPayProvider>
+```
 
-- **API Layer**
-  - `merchantProxy.ts` - Backend proxy functions
-  - `client.ts` - HTTP client with interceptors
-  - Token refresh mechanism with queue management
-  - Automatic token storage and retrieval
+- **`useAirXPay` & `useAirXPaySafe`** - Hooks to access SDK context
+  - `useAirXPay()` - Throws error if used outside provider
+  - `useAirXPaySafe()` - Returns null if used outside provider
 
-- **Security Features**
-  - 🔐 Public key verification before UI rendering
-  - 🔐 Backend re-verification for all requests
-  - 🔐 Token refresh with queue management
-  - 🔐 JWT token validation utilities
+##### 📁 File Upload System (Modern Expo API)
+- **`fileBrowser.ts`** - Complete file handling solution
+  - Uses modern Expo FileSystem API (no deprecation warnings!)
+  - Two conversion methods:
+    - `convertFileToBase64()` - Uses new `File.base64()` method
+    - `convertFileToBase64Fallback()` - Uses fetch + blob as fallback
+  - MIME type validation for images and PDFs
+  - Support for: JPEG, JPG, PNG, PDF
 
-- **Validation & Error Handling**
-  - `PayloadValidator` - Schema validation for all inputs
-  - `ErrorHandler` - Comprehensive error handling with user messages
-  - Real-time form validation with field-level errors
+```tsx
+// Modern approach - no warnings!
+const base64 = await convertFileToBase64({ 
+  uri: file.uri, 
+  type: 'image/jpeg' 
+});
+```
 
-- **Utilities**
-  - `tokenStorage.ts` - AsyncStorage token management
-  - `jwt.ts` - JWT decode and validation
-  - `constants.ts` - Centralized constants and UI texts
+##### 🎨 FileUploader Component
+- **`FileUploader.tsx`** - Reusable file upload component
+  - Camera and gallery options
+  - Preview mode with image display
+  - Upload progress indicator
+  - Remove with confirmation
+  - Test mode indicator
+  - Accepts base64 strings directly
 
-- **UI/UX Features**
-  - Smooth step transitions with animations
-  - Progress bar and step indicators
-  - Loading states with spinners
-  - Status badges (active/suspended/blocked)
-  - KYC status display cards
-  - Document upload with progress
-  - Account number masking
-  - IFSC code validation
-  - Test mode indicators
+##### 📝 Form Components
 
-- **Types**
-  - Comprehensive TypeScript definitions
-  - `Merchant`, `KYCDetails`, `BankDetails` interfaces
-  - `StepConfig`, `StepCompletion` types
-  - `CreateMerchantPayload` and response types
+###### BasicDetailsForm
+- Business type selection (Individual/Company)
+- Dynamic form fields based on business type
+- Real-time validation
+- Country dropdown with nationality sync
+- Date picker for DOB
+- Category chips for business category
+- Smooth animations
 
-- **Documentation**
-  - Comprehensive README with usage examples
-  - API reference documentation
-  - Security flow documentation
+###### KYCVerification
+- PAN, Aadhaar, GST number validation
+- Document upload for:
+  - PAN Card
+  - Aadhaar Card
+  - Address Proof
+  - Selfie
+- Progress tracking (filled/total)
+- Status badges (Verified/Pending/Rejected)
+- Rejection message display
+- Test mode auto-approval
 
-#### Security
-- Public key verification before UI render
-- Secret key never exposed to frontend
-- Token refresh with request queuing
-- JWT expiration validation
+###### BankDetails
+- Account holder name validation
+- Bank name with validation
+- Account number with masking
+- IFSC code validation with regex
+- UPI ID (optional)
+- Cancelled cheque upload
+- Account preview with masking
 
-#### Dependencies
-- React 18.0+
-- React Native 0.72+
-- React Native Paper 5.0+
-- Expo Linear Gradient 12.0+
-- Async Storage 1.0+
-- DateTimePicker 7.0+
+##### 🚦 Onboarding Flow
+
+###### MerchantOnboardingSheet
+- Complete 5-step wizard:
+  1. Basic Details
+  2. KYC Verification
+  3. Bank Details
+  4. Final Review
+  5. Complete
+- Smooth step transitions
+- Progress bar
+- Step indicator
+- Provider verification
+- Error handling
+
+###### FinalStepScreen
+- Review all merchant data
+- Two-step submission:
+  1. Developer's backend API (optional)
+  2. AirXPay merchant creation
+- Progress indicators for each step
+- Token management
+- Success response handling
+
+###### OnboardingCompleteScreen
+- Success celebration screen
+- Profile image/avatar display
+- Status cards (Account, KYC)
+- Merchant information display
+- Wallet details with copy functionality
+- Fully customizable buttons
+- Branding support
+
+##### 🔧 Hooks System
+
+###### useAirXPay
+- `submitToBackend()` - Call developer's API
+- `logout()` - Clear token and reset state
+- `clearError()` - Reset error state
+- Loading and error states
+- Event emission
+
+###### useMerchantOnboarding
+- `createMerchant()` - Create merchant account
+- `fetchStatus()` - Get merchant status
+- `getToken()` - Retrieve stored token
+- `reset()` - Clear all data
+- Automatic data caching
+- Event integration
+
+##### 🔒 Token Management
+- **`tokenService.ts`** - Secure token storage
+  - `saveToken()` - Store token securely
+  - `getToken()` - Retrieve token
+  - `clearToken()` - Remove token
+  - `hasToken()` - Check token existence
+- Uses AsyncStorage for persistence
+- No auto-attachment (developer controlled)
+
+##### 📦 Storage Service
+- **`storage.ts`** - Generic storage wrapper
+  - `set()` - Store any data
+  - `get()` - Retrieve data
+  - `remove()` - Delete data
+  - `clear()` - Clear all
+- Type-safe with generics
+
+##### 🎯 Event System
+- **`sdkEvents.ts`** - Event emitter
+  - Events:
+    - `onboarding:started`
+    - `onboarding:submitting`
+    - `onboarding:success`
+    - `onboarding:error`
+    - `token:missing`
+    - `token:refreshed`
+    - `token:cleared`
+- Timestamp included in all events
+- Dev logging support
+
+##### 🛡️ Error Handling
+- **`errorHandler.ts`** - Comprehensive error handling
+  - Network errors
+  - API errors (400, 401, 403, 409, 422, 500)
+  - Validation errors
+  - User-friendly messages
+  - Error codes
+
+##### 📋 Constants
+- **`constants.ts`** - Centralized constants
+  - API endpoints
+  - Error messages
+  - UI texts
+  - Storage keys
+  - Timeouts
+
+##### 🪵 Logger
+- **`logger.ts`** - Configurable logger
+  - Info, warn, error, debug levels
+  - Prefix support
+  - Conditional logging (DEV only)
+  - Runtime enable/disable
+
+##### 🔐 Public Key Verification
+- **`verifyPublicKey.ts`** - Hidden API
+  - Fixed backend URL (not exposed)
+  - Automatic verification on provider mount
+  - Returns merchant data if valid
+
+```tsx
+// Developer never sees/changes this URL
+const BACKEND_URL = 'http://172.20.10.12:7000';
+```
+
+##### 📁 Project Structure
+```
+@flixora/airxpay-react-native/
+├── api/
+│   └── clients/
+│       └── verifyPublicKey.ts      # Hidden API calls
+├── browsers/
+│   └── fileBrowser.ts               # File handling
+├── components/
+│   ├── common/
+│   │   └── FileUploader.tsx         # Reusable uploader
+│   └── steps/
+│       ├── BasicDetailsForm.tsx     # Step 1
+│       ├── KYCVerification.tsx       # Step 2
+│       ├── BankDetails.tsx           # Step 3
+│       └── onboarding/
+│           ├── MerchantOnboarding.tsx # Main flow
+│           ├── FinalStepScreen.tsx    # Step 4
+│           └── OnboardingComplete.tsx # Step 5
+├── contexts/
+│   └── AirXPayProvider.tsx          # React context
+├── error/
+│   └── errorHandler.ts               # Error handling
+├── etc/
+│   └── constants.ts                   # Constants
+├── events/
+│   └── sdkEvents.ts                   # Event system
+├── hooks/
+│   ├── useAirXPay.ts                   # Provider hook
+│   └── useMerchantOnboarding.ts        # Merchant hook
+├── types/
+│   └── merchantTypes.ts                 # TypeScript types
+└── utils/
+    ├── log/
+    │   └── logger.ts                    # Logger
+    └── token/
+        ├── tokenService.ts               # Token management
+        └── storage.ts                    # Storage wrapper
+```
 
 ---
 
-## [1.0.1] - 2026-03-21
+## [0.0.4] - 2026-02-20
 
-### Fixed
-- Fixed import path for `OnboardingCompleteScreen` in main index file
-- Corrected `StepCompletion` type to include `final` property
-- Fixed `verifyPublicKey` export in merchantProxy
-- Resolved TypeScript errors in AirXPayProvider
+### ✨ Features Added
+- **FileUploader Component** - Initial version
+  - Basic image picker integration
+  - Preview functionality
+  - Remove option
 
-### Changed
-- Updated `FinalStepScreen` import paths for better modularity
-- Improved error messages in validation functions
-
----
-
-## [1.0.2] - 2026-03-22
-
-### Added
-- Security verification flow documentation
-
-### Fixed
-- Public key verification now properly rejects invalid keys
-- Onboarding sheet waits for verification before rendering
-
-### Security
-- 🔒 Added timeout protection for verification calls
-- 🔒 Error masking to prevent internal exposure
+### 🐛 Bug Fixes
+- Fixed MIME type detection for uploaded files
+- Improved error messages for invalid file types
 
 ---
 
-## [1.1.0] - 2026-03-23
+## [0.0.3] - 2026-02-15
 
-### Added
-- **New Feature**: Auto token refresh with request queue
-- **New Feature**: Offline support - cached merchant data
-- **New Feature**: Retry mechanism for failed requests
+### ✨ Features Added
+- **BasicDetailsForm** - First step implementation
+  - Name, email, phone fields
+  - Business type selector
+  - Country dropdown
 
-### Changed
-- Improved animation performance with native driver
-- Optimized re-renders with useCallback and useMemo
-- Enhanced error messages for better UX
-
-### Fixed
-- Fixed race condition in token refresh
-- Fixed memory leak in animations
-- Fixed keyboard handling in forms
-
----
-
-## [1.2.0] - 2026-03-24
-
-### Added
-- **New Feature**: Document upload progress indicators
-- **New Feature**: File type validation for uploads
-- **New Feature**: Test mode indicators with visual badges
-
-### Changed
-- Improved KYC document upload flow
-- Enhanced bank details validation
-- Better error messages for document uploads
-
-### Fixed
-- Fixed document removal confirmation dialog
-- Fixed progress bar animation glitches
+### 🐛 Bug Fixes
 - Fixed form validation on blur
+- Improved keyboard handling on iOS
 
 ---
 
-## [1.3.0] - 2026-03-25
+## [0.0.2] - 2026-02-10
 
-### Added
-- **New Feature**: Custom navigation support in config
-- **New Feature**: Environment-based logging (dev/prod)
-- **New Feature**: Configurable timeouts for API calls
+### ✨ Features Added
+- **AirXPayProvider** - Context setup
+- **Token Service** - Secure storage implementation
+- **Event System** - Basic event emitter
 
-### Changed
-- Improved TypeScript inference for better DX
-- Enhanced error boundary handling
-- Optimized bundle size with tree shaking
-
-### Deprecated
-- `initializeApi` function (use `initializeInternalApi` instead)
+### 🐛 Bug Fixes
+- Fixed provider initialization errors
+- Improved TypeScript type exports
 
 ---
 
-## [1.4.0] - 2026-03-26
+## [0.0.1] - 2026-02-01
 
-### Added
-- **New Feature**: Step persistence - remember completed steps
-- **New Feature**: Auto-fetch merchant status on complete screen
-- **New Feature**: Refresh button for merchant status
+### 🎉 Initial Release
 
-### Changed
-- Improved accessibility with ARIA labels
-- Better keyboard navigation in forms
-- Enhanced RTL language support
+#### ✨ Core Features
+- Basic project structure
+- TypeScript configuration
+- Public key verification
+- Expo integration
 
-### Fixed
-- Fixed status badge colors for all states
-- Fixed KYC status display in complete screen
-- Fixed navigation between steps
-
----
-
-## [2.0.0] - 2026-04-01
-
-### ⚠️ Breaking Changes
-
-#### Added
-- **Major**: Complete rewrite with 5-step flow (previously 4 steps)
-- **Major**: New `FinalStepScreen` component for review and submit
-- **Major**: Step 4 (Final Review) added between Bank and Complete
-
-#### Changed
-- `StepCompletion` interface now requires `final: boolean` property
-- `STEPS` array updated from 4 to 5 steps
-- `validateStepData` now checks step 4 (final review)
-
-#### Migration Guide
-```typescript
-// Old (1.x) - 4 steps
-const STEPS = [basic, kyc, bank, complete];
-
-// New (2.0) - 5 steps
-const STEPS = [basic, kyc, bank, final, complete];
-
-// Update StepCompletion type
-interface StepCompletion {
-  basic: boolean;
-  kyc: boolean;
-  bank: boolean;
-  final: boolean;  // ✅ Add this
-}
-```
-
----
-
-## [2.0.1] - 2026-04-02
-
-### Fixed
-- Fixed TypeScript errors in StepCompletion type
-- Fixed import paths in main index file
-- Fixed final step navigation logic
-
----
-
-## [2.1.0] - 2026-04-03
-
-### Added
-- **New Feature**: Document compression before upload
-- **New Feature**: Network status detection
-- **New Feature**: Automatic retry on network failure
-
-### Changed
-- Improved offline error handling
-- Better loading states with skeletons
-- Enhanced form validation messages
-
-### Fixed
-- Fixed memory issues in file uploader
-- Fixed race condition in network detection
-- Fixed token refresh on slow networks
-
----
-
-## [2.2.0] - 2026-04-04
-
-### Added
-- **New Feature**: Session timeout handling
-- **New Feature**: Multi-language support foundation
-
-### Security
-- 🔒 Added request signing for sensitive operations
-- 🔒 Enhanced token encryption at rest
-
----
-
-## [3.0.0] - 2026-04-10
-
-### ⚠️ Major Release - Security Focus
-
-#### Security
-- 🔒 **CRITICAL**: Added backend public key verification
-- 🔒 **CRITICAL**: Double verification (frontend + backend)
-- 🔒 **CRITICAL**: Reject all requests with invalid public keys
-- 🔒 Added request signing for all API calls
-- 🔒 Enhanced JWT validation with expiration checks
-
-#### Added
-- `verifyPublicKey` function in merchantProxy
-- Security documentation in README
-
-#### Changed
-- Onboarding sheet now waits for verification
-- All API calls now require valid public key
-- Enhanced error messages for security failures
-
----
-
-## [3.0.1] - 2026-04-11
-
-### Fixed
-- Fixed public key verification timeout issues
-- Fixed error handling in verification flow
-- Fixed TypeScript definitions for new security features
-
----
-
-## [4.0.0] - 2026-04-15 - CURRENT VERSION
-
-### 🎉 **MAJOR RELEASE - FlixoraEncrypted Vault** 🔐
-
-#### Added - **🔐 SECURE KEY VAULT**
-- **NEW**: `FlixoraEncrypted` - AES-256-GCM encryption module
-- **NEW**: Auto-encryption of all sensitive keys (secretKey, clientKey)
-- **NEW**: 1-minute auto re-encryption cycle
-- **NEW**: Memory-safe operations with buffer zeroing
-- **NEW**: Flexible key naming - developer can use ANY name in `process.flixora`
-- **NEW**: Multiple configuration support (Production, Testing, Staging)
-- **NEW**: Automatic key loading from `process.flixora`
-- **NEW**: No console.log exposure of keys
-- **NEW**: Access logging for audit without exposing values
-
-#### Added - **Core Features**
-- **NEW**: `secure/` folder with complete vault implementation
-- **NEW**: `FlixoraEncrypted` class with singleton pattern
-- **NEW**: `createSecureVault()` factory function
-- **NEW**: TypeScript definitions for all vault operations
-
-#### Changed
-- **Updated**: `ConfigManager` now integrates with vault
-- **Updated**: `merchantProxy.ts` fetches keys from vault
-- **Updated**: `initializeInternalApi()` auto-loads from `process.flixora`
-- **Updated**: `getSecretKey()` and `getClientKey()` now check vault first
-
-#### Security Enhancements
-- 🔐 **AES-256-GCM** - Military-grade encryption
-- 🔐 **Auto-Encryption** - Keys re-encrypt every 60 seconds
-- 🔐 **Memory Safe** - Buffers zeroed after use
-- 🔐 **No Logging** - Keys never appear in console
-- 🔐 **Flexible Names** - Use ANY key name in `process.flixora`
-- 🔐 **Multiple Configs** - Support for different environments
-
-#### Developer Experience
-- ✅ **Simple Setup** - Just define `process.flixora.ANY_NAME`
-- ✅ **Automatic** - Keys auto-load, auto-encrypt, auto-decrypt
-- ✅ **Zero Config** - No manual encryption/decryption needed
-- ✅ **Type Safe** - Full TypeScript support
-
-#### Migration Guide from v3.x to v4.0
-
-```typescript
-// v3.x - Old way
-process.flixora = {
-  AirXPay: {  // Fixed name
-    publicKey: 'pk_123',
-    secretKey: 'sk_456'
-  }
-};
-
-// v4.0 - New way (ANY NAME!)
-process.flixora = {
-  MyBusinessApp: {  // 👈 Koi bhi naam
-    publicKey: 'pk_123',
-    secretKey: 'sk_456',   // 🔐 Auto-encrypted
-    clientKey: 'ck_789'     // 🔐 Auto-encrypted
-  }
-};
-
-// Multiple environments
-process.flixora = {
-  Production: {
-    publicKey: 'pk_live_111',
-    secretKey: 'sk_live_222'
-  },
-  Testing: {
-    publicKey: 'pk_test_333',
-    secretKey: 'sk_test_444'
-  }
-};
-```
-
----
-
-## [4.0.1] - 2026-04-16
-
-### Fixed
-- Fixed TypeScript errors in AirXPayConfig interface
-- Added missing properties to AirXPayConfig (environment, autoRefreshToken, tokenRefreshThreshold)
-- Fixed `loadKeysFromProcess()` to handle any key name dynamically
-- Resolved build issues with process.flixora type declarations
-
----
-
-## [4.1.0] - 2026-04-17
-
-### Added
-- **New Feature**: Dark mode support
-- **New Feature**: Custom theme support
-- **New Feature**: Font scaling accessibility
-- **New Feature**: Enhanced vault logging (non-sensitive)
-
-### Changed
-- Improved vault performance
-- Better memory management
-- Enhanced error messages
-
----
-
-## Current Version
-
-**Latest Stable:** `4.1.0` (April 17, 2026)
+#### 📦 Dependencies
+- React Native 0.72+
+- Expo SDK 50+
+- TypeScript 5.0+
 
 ---
 
 ## Version History
 
-| Version | Date | Highlights |
-|---------|------|------------|
-| **4.1.0** | 2026-04-17 | Dark mode, custom themes, vault enhancements |
-| **4.0.1** | 2026-04-16 | TypeScript fixes, dynamic key loading |
-| **4.0.0** | 2026-04-15 | 🎉 **FlixoraEncrypted Vault** - AES-256, auto-encryption, flexible key names |
-| 3.0.0 | 2026-04-10 | Security focus, double verification |
-| 2.0.0 | 2026-04-01 | 5-step flow, final review screen |
-| 1.0.0 | 2026-03-20 | Initial release |
+| Version | Date | Key Features |
+|---------|------|--------------|
+| 0.0.5 | 2026-03-03 | ✅ Complete onboarding flow, FileUploader, All form steps, Hooks, Error handling |
+| 0.0.4 | 2026-02-20 | ✅ FileUploader component, MIME type fixes |
+| 0.0.3 | 2026-02-15 | ✅ BasicDetailsForm, Validation improvements |
+| 0.0.2 | 2026-02-10 | ✅ AirXPayProvider, Token service, Events |
+| 0.0.1 | 2026-02-01 | 🎉 Initial release |
 
 ---
 
-## 🚀 Upgrade Guide
+## Breaking Changes
 
-### From v3.x to v4.x
+### v0.0.4 → v0.0.5
+- **FileUploader API Changed**: Now emits base64 string directly
+  ```tsx
+  // Old (v0.0.4)
+  onUpload={(file) => handleFile(file)}
+  
+  // New (v0.0.5)
+  onUpload={(base64) => handleBase64(base64)}
+  ```
 
-```bash
-npm install @flixora/airxpay-sdk-init-ui@latest
-```
+### v0.0.3 → v0.0.4
+- No breaking changes
 
-No breaking changes in API! Just better security:
+### v0.0.2 → v0.0.3
+- No breaking changes
 
-```javascript
-// ✅ Still works
-process.flixora.AirXPay = { ... }
-
-// ✅ Better: Use any name!
-process.flixora.MyApp = { ... }
-```
+### v0.0.1 → v0.0.2
+- **Provider Required**: SDK must be wrapped in `AirXPayProvider`
+  ```tsx
+  // Old (v0.0.1)
+  <MerchantOnboarding {...props} />
+  
+  // New (v0.0.2)
+  <AirXPayProvider publicKey="key">
+    <MerchantOnboarding {...props} />
+  </AirXPayProvider>
+  ```
 
 ---
 
-## Contributors
+## Migration Guides
 
-- Tafseel Khan ([@tafseelkhan](https://github.com/tafseelkhan)) - Lead Developer
-- Flixora Engineering Team
-- Community Contributors
+### Upgrading from 0.0.4 to 0.0.5
+
+1. **Update FileUploader usage**:
+   ```tsx
+   // Before
+   const handleUpload = (file) => {
+     const base64 = await convertFile(file);
+     setData(base64);
+   };
+   
+   // After - FileUploader does conversion internally
+   const handleUpload = (base64) => {
+     setData(base64); // Already converted!
+   };
+   ```
+
+2. **Wrap with Provider** (if not already):
+   ```tsx
+   <AirXPayProvider publicKey="your_key">
+     <MerchantOnboarding />
+   </AirXPayProvider>
+   ```
+
+3. **Update imports**:
+   ```tsx
+   // New modular imports
+   import { useAirXPay } from '@flixora/airxpay-react-native/hooks';
+   import { tokenService } from '@flixora/airxpay-react-native/utils';
+   ```
+
+---
+
+## Upcoming Features
+
+### Planned for v0.1.0
+- 🚀 **Biometric authentication** - Fingerprint/Face ID support
+- 📱 **Push notifications** - Real-time status updates
+- 💳 **Payment processing** - Accept payments
+- 📊 **Analytics dashboard** - Merchant analytics
+- 🌐 **Offline mode** - Work without internet
+
+### Planned for v0.2.0
+- 🎨 **Theme customization** - Custom colors and branding
+- 📦 **Bulk operations** - Multiple merchants at once
+- 🔄 **Auto-retry** - Failed upload retry mechanism
+- 📈 **Performance monitoring** - SDK performance metrics
 
 ---
 
 ## Support
 
-For issues and feature requests, please [open an issue](https://github.com/flixora/airxpay-sdk-init-ui/issues) on GitHub.
+### Need Help?
+- 📧 Email: support@flixora.com
+- 📚 Docs: [docs.flixora.com/react-native](https://docs.flixora.com/react-native)
+- 🐛 Issues: [GitHub Issues](https://github.com/tafseelkhan/airxpay-sdk-init-ui/issues)
+- 💬 Discord: [Flixora Community](https://discord.gg/flixora)
+
+### Report Issues
+When reporting issues, please include:
+- SDK version
+- React Native version
+- Expo version (if using Expo)
+- Device/OS details
+- Steps to reproduce
+- Error logs (if any)
 
 ---
 
-**Full Changelog**: [https://github.com/flixora/airxpay-sdk-init-ui/compare/v1.0.0...v4.1.0](https://github.com/flixora/airxpay-sdk-init-ui/compare/v1.0.0...v4.1.0)
+## Contributors
+
+- Tafseel Khan - Lead Developer
+- Flixora Team - SDK Development
 
 ---
 
-<div align="center">
-  <sub>Copyright © 2026 Flixora. All rights reserved.</sub>
-  <br/>
-  <sub>Made with ❤️ for the developer community</sub>
-</div>
-```
+**Made with ❤️ by Flixora Team**
 
 ---
-
-## ✅ Summary of Changes Made
-
-| Section | Changes |
-|---------|---------|
-| **v4.0.0** | Added complete FlixoraEncrypted vault details |
-| **v4.0.1** | Fixed TypeScript errors and dynamic key loading |
-| **v4.1.0** | Added dark mode and vault enhancements |
-| **Migration Guide** | Added clear upgrade instructions |
-| **Version History** | Updated with latest versions |
-| **Footer** | Updated copyright to Flixora |
